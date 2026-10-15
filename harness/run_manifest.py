@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 
 from conditions import CONTROL_ENV, ORDERS, load_manifest, resolve_condition
+from stage_corpus import stage_corpus
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -91,18 +92,20 @@ def main(argv=None):
                                     "up", "-d", "--no-build", "--pull", "never", "gateway"], env=cell_env, check=True)
                     gateway_started = True
                 with tempfile.TemporaryDirectory(prefix="condition-", dir=ROOT / "work") as tmp:
+                    staged = pathlib.Path(tmp) / "corpus"
+                    stage_corpus(corpus, tasks / task, staged)
+                    condition["staged_corpus_tree_sha256"] = corpus_hash(staged)
+                    fixture = tasks / task / "fixture.patch"
+                    condition["fixture_sha256"] = hashlib.sha256(fixture.read_bytes()).hexdigest() if fixture.exists() else None
                     config = pathlib.Path(tmp) / "condition.json"
                     config.write_text(json.dumps(condition))
                     cmd = ["docker", "compose", "-f", str(ROOT / "docker/compose.yaml"), "run", "--rm", "--no-deps", "--pull", "never",
                            "-e", f"ARM={cid}", "-e", f"TASK={task}", "-e", "CONDITION_FILE=/task/condition.json",
-                           "-v", f"{corpus}:/corpus:ro", "-v", f"{tasks / task / 'prompt.md'}:/task/prompt.md:ro",
+                           "-v", f"{staged}:/corpus:ro", "-v", f"{tasks / task / 'prompt.md'}:/task/prompt.md:ro",
                            "-v", f"{config}:/task/condition.json:ro", "-v", f"{cell}:/out"]
                     # Clear all treatment keys even when an image bakes defaults.
                     for key in condition["env_keys"]:
                         cmd += ["-e", f"{key}={condition['env'].get(key, '')}"]
-                    fixture = tasks / task / "fixture.patch"
-                    if fixture.exists():
-                        cmd += ["-v", f"{fixture}:/task/fixture.patch:ro"]
                     proc = subprocess.run(cmd + ["bench", "run-one"], env=cell_env)
                     if proc.returncode:
                         (cell / "container_failure.json").write_text(json.dumps({"exit_code": proc.returncode}))

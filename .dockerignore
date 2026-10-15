@@ -5,6 +5,20 @@
 .githooks
 .github
 benchmarks
+# Host-only task construction/scoring and the unbroken reference corpus must not
+# be recoverable from /bench in an agent image. Only staged public inputs mount.
+fixtures
+experiments
+docs
+harness/tests
+harness/task_assets
+harness/build_retrieval_tasks.py
+harness/stage_corpus.py
+harness/run_manifest.py
+harness/score_repair.py
+harness/evaluate.py
+harness/summarize_experiment.py
+harness/verify_wrappers.py
 inputs
 out
 work

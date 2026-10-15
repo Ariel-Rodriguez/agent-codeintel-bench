@@ -62,14 +62,18 @@ run_one() {
   local cell="$OUT/$label/$arm/$task"
   mkdir -p "$cell"
   chmod 777 "$cell" 2>/dev/null || true
-  local volumes=(-v "$CORPUS:/corpus:ro" -v "$prompt:/task/prompt.md:ro" -v "$cell:/out")
-  [ -f "$TASKS/$task/fixture.patch" ] && volumes+=(-v "$TASKS/$task/fixture.patch:/task/fixture.patch:ro")
+  local staged_parent staged
+  staged_parent="$(mktemp -d)"; staged="$staged_parent/corpus"
+  python3 "$ROOT/harness/stage_corpus.py" --corpus "$CORPUS" \
+    --task-dir "$TASKS/$task" --dest "$staged"
+  local volumes=(-v "$staged:/corpus:ro" -v "$prompt:/task/prompt.md:ro" -v "$cell:/out")
   BENCH_IMAGE="$image" compose run --rm \
     -e ARM="$arm" -e TASK="$task" \
     -e BASELINE_TOOLS -e ENHANCED_TOOLS -e CODEINTEL_EXT -e TOOL_ENTRY \
     -e GUIDANCE_FILE \
     -e PI_PROVIDER -e PI_MODEL -e PI_THINKING \
     "${volumes[@]}" bench run-one
+  rm -rf "$staged_parent"
 
   # Executable repair scoring, host-side, against real tests.
   if [ -f "$TASKS/$task/verify.json" ]; then

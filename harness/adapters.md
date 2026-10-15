@@ -127,6 +127,26 @@ The dynamic no-network production probe and B/C behavior contrast are **BLOCKED*
 until the pinned source/instrumented image exists; no alternate mock probe is
 presented as proof. Synthetic verifier tests test the host contract only.
 
+### Host-only repair materials
+
+Rebuild both base/tool images after these harness changes. `.dockerignore` now
+excludes the unbroken fixture, benchmarks, hidden tests, reference generation,
+host scoring and host tests; an old image may still contain those materials.
+The host stages `corpus + fixture.patch` **before** mounting `/corpus`, without
+source history. Otherwise an agent could recover the unbroken code by reading
+the original `/corpus` mount even when the workspace had the regression.
+Only this public broken snapshot, prompt and resolved condition enter a cell.
+
+`score_repair.py` rejects protected files/config changes by comparing actual
+reconstructed content, not only patch paths. This catches untracked test
+injection/overwrites as well. Archive traversal, links and executable-environment
+artifacts are rejected. New retrieval tasks permit changes only below `src/`.
+Trusted hidden tests are overlaid only after tamper checks; they are never
+mounted during agent execution. Verification uses a single trusted image with
+`--network none --pull never`, resource limits and an offline venv. Infrastructure
+errors stay distinct from failed repairs. The scorer cannot authenticate a
+malicious sidecar or make arbitrary Python source safe outside its sandbox.
+
 ## Tools worth adding next
 
 - LSP-backed symbol tools (e.g. a language-server bridge)
