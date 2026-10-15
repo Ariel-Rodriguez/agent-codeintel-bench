@@ -14,17 +14,21 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 class ConditionTests(unittest.TestCase):
-    def test_draft_blocks_unverified_kernel_and_resolves_independently(self):
+    def test_verified_conditions_resolve_independently(self):
         m = load_manifest(ROOT / "experiments/kernel-retrieval.json")
-        env = {"BENCH_IMAGE": "local-tool", "TOOL_ENTRY": "/tool/index.ts", "GUIDANCE_FILE": "leak"}
+        env = {"BASE_IMAGE": "local-base", "BENCH_IMAGE": "local-tool",
+               "TOOL_ENTRY": "/tool/index.ts", "GUIDANCE_FILE": "leak"}
         a = resolve_condition(m, "baseline", environ=env)
         b = resolve_condition(m, "kernel_full", environ=env)
         c = resolve_condition(m, "kernel_no_compression", environ=env)
         self.assertIsNone(a["extension"])
         self.assertIsNone(a["guidance_file"])
-        self.assertEqual(a["image"], b["image"])
-        self.assertIn("blocked_reason", b)
-        self.assertIn("switch", c["blocked_reason"])
+        self.assertEqual(a["image"], "local-base")
+        self.assertEqual(b["image"], c["image"])
+        self.assertEqual(b["image"], "local-tool")
+        self.assertNotIn("blocked_reason", b)
+        self.assertEqual(c["env"].get("KERNEL_NO_COMPRESSION"), "1")
+        self.assertNotIn("KERNEL_NO_COMPRESSION", b["env"])
         self.assertNotIn("-e", pi_flags(a))
         self.assertEqual(pi_flags(b)[-4:], ["-e", "/tool/index.ts", "--append-system-prompt", b["guidance_file"]])
         self.assertIn("--no-extensions", pi_flags(b))
@@ -48,17 +52,37 @@ class ConditionTests(unittest.TestCase):
                 if a != b:
                     self.assertEqual(sum(order.index(a) < order.index(b) for order in ORDERS), 3)
 
-    def test_no_unsupported_switch_can_enable_c(self):
-        m = json.loads((ROOT / "experiments/kernel-retrieval.json").read_text())
-        del m["conditions"][2]["blocked_reason"]
+    def test_compression_control_requires_source_evidence(self):
+        def manifest(verified, source_evidence=True):
+            return {
+                "schema_version": 1,
+                "limits": {"wall_seconds": 10, "output_bytes": 100},
+                "compression_control": {"verified": verified, "revision": "rev1",
+                                        "env_keys": ["KERNEL_NO_COMPRESSION"],
+                                        **(({"source_evidence": "x"}) if source_evidence else {})},
+                "conditions": [
+                    {"id": "baseline", "image": "img", "extension": None, "tools": ["read"],
+                     "guidance_file": None, "env": {}, "config_file": None, "expected_activation": {}},
+                    {"id": "kernel_full", "image": "img", "extension": "e", "extension_revision": "rev1",
+                     "tools": ["read"], "guidance_file": None, "env": {}, "config_file": None,
+                     "expected_activation": {}, "profile": "lean"},
+                    {"id": "kernel_no_compression", "image": "img", "extension": "e", "extension_revision": "rev1",
+                     "tools": ["read"], "guidance_file": None, "env": {"KERNEL_NO_COMPRESSION": "1"},
+                     "config_file": None, "expected_activation": {}, "profile": "lean"},
+                ],
+            }
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "m.json"
-            path.write_text(json.dumps(m))
+            # Unverified compression control: C is blocked.
+            path.write_text(json.dumps(manifest(False)))
             self.assertIn("blocked_reason", load_manifest(path)["conditions"][2])
-            m["compression_control"]["verified"] = True
-            path.write_text(json.dumps(m))
+            # Verified without source evidence: rejected.
+            path.write_text(json.dumps(manifest(True, source_evidence=False)))
             with self.assertRaisesRegex(ValueError, "source evidence"):
                 load_manifest(path)
+            # Verified with source evidence: accepted.
+            path.write_text(json.dumps(manifest(True)))
+            load_manifest(path)
 
     def test_bounds_no_network_and_failure_capture(self):
         with tempfile.TemporaryDirectory() as tmp:

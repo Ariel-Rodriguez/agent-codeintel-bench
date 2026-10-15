@@ -72,10 +72,16 @@ class ManifestRunnerTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 17 if trial == 2 else 0)
 
             env = {"CORPUS": str(corpus), "TASKS": str(root / "tasks"), "OUT": str(out), "RUN_ID": "offline",
-                   "TRIALS": "3", "TASK_LIST": "task", "BENCH_IMAGE": "local", "TOOL_ENTRY": "/tool.ts",
-                   "CODEINTEL_EXT": "ambient-leak"}
+                   "TRIALS": "3", "TASK_LIST": "task", "BASE_IMAGE": "local", "BENCH_IMAGE": "local",
+                   "TOOL_ENTRY": "/tool.ts", "CODEINTEL_EXT": "ambient-leak"}
+            # Use a draft (unverified) manifest so the blocked path is exercised.
+            draft = json.loads((rm.ROOT / "experiments/kernel-retrieval.json").read_text())
+            draft["compression_control"]["verified"] = False
+            draft["conditions"][1]["blocked_reason"] = "draft: unverified kernel"
+            draft_path = root / "conditions.json"
+            draft_path.write_text(json.dumps(draft))
             with mock.patch.dict(os.environ, env), mock.patch("run_manifest.subprocess.run", side_effect=fake_run):
-                rc = rm.main(["--conditions", str(rm.ROOT / "experiments/kernel-retrieval.json")])
+                rc = rm.main(["--conditions", str(draft_path)])
             self.assertEqual(rc, 1)  # blocked B/C and retained orchestration failure
             result = json.loads((out / "offline/experiment_summary.json").read_text())
             self.assertEqual(len(result["cells"]), 9)
