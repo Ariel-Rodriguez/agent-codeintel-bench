@@ -8,13 +8,23 @@ set -euo pipefail
 MODE="${1:-run}"
 ROOT=/bench
 
+hydrate_caches() {
+  # Copy the build-time model cache into the writable tmpfs home so offline
+  # libraries find it and can still write their lock files.
+  if [ -n "${TOOL_CACHE:-}" ] && [ -d "${TOOL_CACHE}/hf" ]; then
+    mkdir -p "${HF_HOME:-$HOME/.cache/huggingface}"
+    cp -R "${TOOL_CACHE}/hf/." "${HF_HOME:-$HOME/.cache/huggingface}/" 2>/dev/null || true
+  fi
+}
+
 prepare_from_inputs() {
   local repo="" tool=""
   if   [ -f /inputs/repo.zip ]; then repo=/inputs/repo.zip
   elif [ -d /inputs/repo ];     then repo=/inputs/repo
   fi
-  if [ -d /inputs/tool ]; then tool=/inputs/tool
-  elif [ -f /inputs/tool ]; then tool=/inputs/tool
+  if   [ -d /inputs/tool ];     then tool=/inputs/tool
+  elif [ -f /inputs/tool ];     then tool=/inputs/tool
+  elif [ -n "${TOOL_PATH:-}" ] && [ -e "$TOOL_PATH" ]; then tool="$TOOL_PATH"
   fi
 
   if [ -z "$repo" ] && [ -z "$tool" ]; then
@@ -29,8 +39,10 @@ prepare_from_inputs() {
 }
 
 probe() {
-  local target="${PROBE_TARGET:-/inputs/tool}"
-  [ -e "$target" ] || target="$ROOT/examples/untrusted-extension"
+  local target="${PROBE_TARGET:-}"
+  [ -n "$target" ] || { [ -e /inputs/tool ] && target=/inputs/tool; }
+  [ -n "$target" ] || { [ -n "${TOOL_PATH:-}" ] && [ -e "${TOOL_PATH}" ] && target="$TOOL_PATH"; }
+  [ -n "$target" ] || target="$ROOT/examples/untrusted-extension"
   echo "== static scan: $target =="
   python3 "$ROOT/harness/scan_extension.py" "$target" || true
   echo
@@ -52,6 +64,7 @@ probe() {
 
 case "$MODE" in
   run)
+    hydrate_caches
     prepare_from_inputs
     mkdir -p "$ROOT/out"
     # shellcheck disable=SC1091
@@ -68,6 +81,7 @@ case "$MODE" in
     exec bash
     ;;
   agent)
+    hydrate_caches
     prepare_from_inputs
     exec pi \
       --provider "${PI_PROVIDER:-deepseek}" \

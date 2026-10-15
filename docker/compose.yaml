@@ -35,7 +35,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: agent-codeintel-bench
+    image: ${BENCH_IMAGE:-agent-codeintel-bench}
     init: true
     depends_on:
       - gateway
@@ -62,6 +62,7 @@ services:
       ENHANCED_TOOLS: ${ENHANCED_TOOLS:-read,bash,edit,write}
       CODEINTEL_EXT: ${CODEINTEL_EXT:-}
       RUN_ID: ${RUN_ID:-run1}
+      TOOL_PATH: ${TOOL_PATH:-}
       # All model traffic goes through the gateway, never direct.
       MODEL_GATEWAY: http://gateway:8080/v1
     cap_drop:
@@ -70,7 +71,7 @@ services:
       - no-new-privileges:true
 
   probe:
-    image: agent-codeintel-bench
+    image: ${BENCH_IMAGE:-agent-codeintel-bench}
     network_mode: none
     read_only: true
     tmpfs:

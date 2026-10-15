@@ -28,6 +28,20 @@ Vendor the tool under `vendor/` (gitignored) or point `CODEINTEL_EXT` at an
 installed copy. Pin the exact revision you tested and write it down — results are
 valid only for that revision.
 
+## Tools that need dependencies or downloaded models
+
+If the tool is not self-contained, bake it into a per-tool image so the run stays
+offline (see `docker/README.md` → "Tools with dependencies or downloaded
+models"):
+
+```bash
+docker/run.sh tool /path/to/tool
+source work/tool.env
+```
+
+`provision.sh` (build-time setup) and `warmup.sh` (model download) are optional
+hooks inside the tool directory.
+
 ## Tools worth adding next
 
 - LSP-backed symbol tools (e.g. a language-server bridge)

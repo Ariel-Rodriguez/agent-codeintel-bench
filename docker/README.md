@@ -56,6 +56,30 @@ mkdir -p inputs && cp -R examples/untrusted-extension inputs/tool
 docker/run.sh probe
 ```
 
+## Tools with dependencies or downloaded models
+
+A no-network container cannot `npm install` or fetch a model at run time. Bake
+both into a per-tool image at **build** time (the build may use the network):
+
+```bash
+docker/run.sh tool /path/to/tool          # -> agent-codeintel-bench-tool:<name>
+source work/tool.env
+export ENHANCED_TOOLS='read,bash,edit,write,<prefix>_*'
+UPSTREAM_BASE_URL=<model /v1> docker/run.sh probe   # scans/loads the baked tool
+UPSTREAM_BASE_URL=<model /v1> docker/run.sh run     # offline benchmark
+```
+
+The tool directory may ship two optional hooks:
+
+- `provision.sh` — extra build-time setup, run after dependency install.
+- `warmup.sh` — download model caches; they are stored under `/opt/tool-cache`
+  in the image.
+
+At run time the caches are hydrated into a writable tmpfs and
+`HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` are set, so the tool reads them
+without any network. `work/tool.env` records `BENCH_IMAGE`, `TOOL_PATH`, and
+`TOOL_ENTRY`; source it before `run`/`probe` so Compose uses the tool image.
+
 ## Inputs
 
 ```

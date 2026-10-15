@@ -1,190 +1,32 @@
 # agent-codeintel-bench
 
-A small, reproducible harness for **A/B testing code-intelligence tools for
-coding agents** (Pi extensions, MCP servers, LSP bridges, custom tool sets).
+**ELI5:** coding agents find code with `grep` and by reading files. Some tools
+claim to do that better (code indexes, symbol search, LSP, embeddings). This repo
+tests that claim honestly: the **same task, two agents** — one plain, one with the
+tool — then compares correctness and cost. Untrusted tools run in a locked-down
+Docker box with **no internet egress**, so a bad tool cannot phone home.
 
-Coding agents already navigate code with `grep`, file listing, and `read`. Many
-code-intelligence tools promise better navigation, impact analysis, repair, and
-cross-session reuse. This repo exists to *test* that promise instead of assuming
-it — and to make it easy to add the next tool.
+**Results live on the website:** <https://ariel-rodriguez.github.io/agent-codeintel-bench/>
 
-The first completed result is **report 0001** on the [project site](https://ariel-rodriguez.github.io/agent-codeintel-bench/): a structural
-code-index extension produced **no correctness benefit** and a
-**model-dependent** token effect across four task families. Reports live under
-[`docs/`](docs/) and are published as a GitHub Pages site.
+## Where to go next
 
-## Reports
+| I want to… | Go to |
+|---|---|
+| Read the results | [website](https://ariel-rodriguez.github.io/agent-codeintel-bench/) · [`docs/index.md`](docs/index.md) |
+| Write a report in the standard format | [`docs/format.md`](docs/format.md) |
+| See the reports | [`docs/reports/`](docs/reports/) (0001 concluded, 0002 blocked) |
+| Run a test in the isolated container | [`docker/README.md`](docker/README.md) |
+| Add a new tool to test | [`harness/adapters.md`](harness/adapters.md) |
+| Bring my own repo + tool | [`harness/setup_test.sh`](harness/setup_test.sh) |
+| Check a tool for risky behaviour | `python3 harness/scan_extension.py <tool>` · `docker/run.sh probe` |
+| Measure how big a repo is | `python3 harness/repo_complexity.py <repo>` |
+| Let an agent run the experiment | [`PROMPT.md`](PROMPT.md) |
+| Contribute / claim a test / commit rules | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
-- [Report 0001 — structural code-index extension](docs/reports/0001-structural-code-index.md)
-- [Report 0002 — agent-kernel](docs/reports/0002-agent-kernel.md) (in progress)
-- [Report format](docs/format.md)
+## In one line
 
-
-## How it works
-
-```
-fixtures/widget-service/     neutral Python package used as the corpus
-benchmarks/                  four task families, each with prompt + reference.json
-harness/                     prepare / run / evaluate scripts (tool-agnostic)
-configs/                     isolated Pi configs per arm (auth.json is gitignored)
-results/                     raw JSONL streams, metrics, per-run reports
-work/                        the two working copies the agents actually edit
-```
-
-- **Baseline arm:** `read, bash, edit, write`.
-- **Enhanced arm:** the same built-ins **plus one tool** (`CODEINTEL_EXT` /
-  `ENHANCED_TOOLS`). Adding a tool is described in
-  [`harness/adapters.md`](harness/adapters.md).
-- **Task families:** `navigation`, `impact`, `repair`, `persistence`.
-- **Evidence per run:** prompt + SHA-256, `git` status before/after, the full
-  JSONL event stream, stderr, exit code, wall time, provider token usage, and
-  tool calls by name.
-
-## Quickstart
-
-### Isolated (recommended)
-
-Because a code-intelligence extension runs inside the Pi process, treat it as
-untrusted. Run it in the container, which exposes only `inputs/` (read-only) and
-`out/`:
-
-```bash
-mkdir -p inputs
-cp /path/to/repo.zip inputs/repo.zip     # the repository to test
-cp -R /path/to/tool    inputs/tool        # the extension/tool to test
-
-docker/run.sh build
-docker/run.sh run      # prepare + run + write results to out/
-docker/run.sh down     # tear down (containers and volumes)
-```
-
-See [`docker/README.md`](docker/README.md) for credentials and network options.
-
-#### Check the tool before trusting it
-
-The bench container has **no direct network egress** — it reaches the model only
-through an allowlisted gateway, so an untrusted extension cannot exfiltrate to
-arbitrary hosts. To inspect a tool first:
-
-```bash
-docker/run.sh probe    # static risk scan + no-network, read-only load
-```
-
-`harness/scan_extension.py` flags process execution, filesystem writes, network
-access, secret-path reads, `eval`, and obfuscation. The probe then runs the entry
-with `network_mode: none` and a read-only root, so the attempts fail instead of
-succeeding. Try it on the bundled demo by copying
-`examples/untrusted-extension` into `inputs/tool`.
-
-### Local
-
-```bash
-# 0. prerequisites: pi on PATH, python3, git; network for the first pip install
-git clone <this repo> && cd agent-codeintel-bench
-export PI_PROVIDER=deepseek PI_MODEL=deepseek-flash PI_THINKING=high
-
-# 1. create two identical work copies + isolated Pi configs (copies your auth.json)
-harness/prepare.sh
-
-# 2. point "enhanced" at a tool (optional; without this it is baseline vs baseline)
-export ENHANCED_TOOLS='read,bash,edit,write,codeindex_*'
-export CODEINTEL_EXT="$PWD/vendor/pi-codeindex/src/pi/index.ts"
-
-# 3. run one counterbalanced suite
-harness/run_suite.sh run1
-
-# 4. summarise
-harness/evaluate.py run1
-```
-
-Each `run_condition.sh` invocation writes to
-`results/<run_id>/<arm>/<task>/`. `evaluate.py` writes `metrics.json`,
-`results/summary.csv`, and a per-run `REPORT.md`.
-
-### Repair fixture
-
-The repair task needs the bug applied first:
-
-```bash
-for arm in baseline enhanced; do
-  git -C "work/experiment-$arm" apply benchmarks/repair/bug.patch
-done
-harness/run_condition.sh baseline run1 repair benchmarks/repair/prompt.md
-harness/run_condition.sh enhanced run1 repair benchmarks/repair/prompt.md
-```
-
-The fixture ships a passing test suite; the patch makes exactly one test fail.
-
-### Persistence (two sessions)
-
-```bash
-harness/run_condition.sh baseline run1 persistence_stage1 benchmarks/persistence/stage1.md
-harness/run_condition.sh enhanced run1 persistence_stage1 benchmarks/persistence/stage1.md
-# inject a source change, then run stage 2 in fresh sessions
-harness/run_condition.sh baseline run1 persistence_stage2 benchmarks/persistence/stage2.md
-harness/run_condition.sh enhanced run1 persistence_stage2 benchmarks/persistence/stage2.md
-```
-
-### Let an agent do it
-
-[`PROMPT.md`](PROMPT.md) is a bootstrap prompt: point a Pi agent at it and the
-agent reads the repo, inspects `inputs/`, sets up baseline vs experiment with
-`harness/setup_test.sh`, runs the suite, and reports. In the container:
-
-```bash
-docker/run.sh agent
-```
-
-### Setup only (bring your own repo and tool)
-
-```bash
-harness/setup_test.sh --repo inputs/repo.zip --tool inputs/tool \
-  --tool-tools 'read,bash,edit,write,codeindex_*'
-source work/experiment.env
-harness/run_suite.sh run1 && harness/evaluate.py run1
-```
-
-## Reporting
-
-Results are published on GitHub Pages (source in [`docs/`](docs/)) using a fixed
-scientific format: Hypothesis, Method, Materials, Evidence, Analysis, Threats,
-Conclusion, Reproduction. Corpora are described by aggregate shape (files, lines,
-symbol and AST-node counts) only — never source, identifiers, or semantics.
-
-## Claiming a test
-
-Before running, reserve the `(tool × task family × repo × model)` cell by
-opening a **Claim a test** issue. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
-commit-message policy (`Fix` / `Add` / `Chore`, no co-author trailers) and the
-claim process.
-
-## Verifying the tool was actually used
-
-A tool being installed is not evidence it was used. For each enhanced run, parse
-the system prompt and tool events:
-
-```bash
-python3 - <<'PY'
-import json
-p = "results/run1/enhanced/navigation/stdout.jsonl"
-for line in open(p):
-    e = json.loads(line)
-    if e.get("type") == "message_start" and e["message"].get("role") == "system":
-        print([n for n in e["message"]["sections"]["tools"].split("\n") if n.startswith("- codeindex")][:3])
-    if e.get("type") == "tool_execution_start":
-        print("CALL", e.get("toolName"))
-PY
-```
-
-## Limitations
-
-- The reference corpus behind report 0001 is private; the public fixture is a
-  neutral stand-in with the same task shape, so absolute numbers may differ.
-- The scoring rubric is keyword-based and coarse; treat it as a smoke test, not
-  a ground truth. Hidden tests are on the roadmap.
-- Directory isolation is **not** a sandbox. Use a container or a dedicated user
-  for untrusted work.
-- n is small. Re-run at least 3 counterbalanced trials before trusting a delta.
+`baseline (read,bash,edit,write)` vs `enhanced (+one tool)`, four task families,
+counterbalanced trials, every number backed by a stored run.
 
 ## License
 
