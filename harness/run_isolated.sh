@@ -30,7 +30,7 @@ ENHANCED_IMAGE="${BENCH_IMAGE:-agent-codeintel-bench-tool:tool}"
 OUT="${OUT:-$ROOT/out}"
 
 TMP_CORPUS=""
-cleanup() { [ -n "$TMP_CORPUS" ] && rm -rf "$TMP_CORPUS"; }
+cleanup() { if [ -n "$TMP_CORPUS" ]; then rm -rf "$TMP_CORPUS"; fi; return 0; }
 trap cleanup EXIT
 
 if [ -f "$CORPUS" ] && printf '%s' "$CORPUS" | grep -qi '\.zip$'; then

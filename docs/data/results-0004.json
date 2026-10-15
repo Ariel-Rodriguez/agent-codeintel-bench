@@ -1,0 +1,92 @@
+{
+  "model": "local Qwen3.8-27B IQ3_S 224k, medium",
+  "report": "0004",
+  "runs": [
+    {
+      "arm": "baseline",
+      "input_tokens": 19402,
+      "output_tokens": 6406,
+      "repaired": true,
+      "tool_calls": 25,
+      "tool_calls_by_name": {
+        "bash": 21,
+        "edit": 1,
+        "read": 3
+      },
+      "trial": "t1",
+      "wall_seconds": 139.109
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 15645,
+      "output_tokens": 3303,
+      "repaired": true,
+      "tool_calls": 13,
+      "tool_calls_by_name": {
+        "bash": 10,
+        "edit": 1,
+        "read": 2
+      },
+      "trial": "t1",
+      "wall_seconds": 57.726
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 19804,
+      "output_tokens": 6768,
+      "repaired": true,
+      "tool_calls": 25,
+      "tool_calls_by_name": {
+        "bash": 22,
+        "edit": 1,
+        "read": 2
+      },
+      "trial": "t2",
+      "wall_seconds": 133.629
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 13213,
+      "output_tokens": 3320,
+      "repaired": true,
+      "tool_calls": 11,
+      "tool_calls_by_name": {
+        "bash": 8,
+        "edit": 1,
+        "read": 2
+      },
+      "trial": "t2",
+      "wall_seconds": 58.572
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 16238,
+      "output_tokens": 3099,
+      "repaired": true,
+      "tool_calls": 14,
+      "tool_calls_by_name": {
+        "bash": 9,
+        "edit": 1,
+        "read": 4
+      },
+      "trial": "t3",
+      "wall_seconds": 53.962
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 32090,
+      "output_tokens": 8152,
+      "repaired": true,
+      "tool_calls": 24,
+      "tool_calls_by_name": {
+        "bash": 18,
+        "edit": 1,
+        "read": 5
+      },
+      "trial": "t3",
+      "wall_seconds": 155.3
+    }
+  ],
+  "task": "repair (cross-module discovery)",
+  "tool": "floydous/pi-agent-kernel @ b9e93be (v0.4.0), lean profile"
+}
