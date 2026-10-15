@@ -1,0 +1,9 @@
+title: Agent Code-Intelligence Benchmark
+description: Does code intelligence help coding agents? Measured, not assumed.
+theme: jekyll-theme-cayman
+markdown: kramdown
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: true

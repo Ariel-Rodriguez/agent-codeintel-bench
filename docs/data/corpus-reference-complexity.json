@@ -1,0 +1,40 @@
+{
+  "directories": 4,
+  "files": 105,
+  "languages": {
+    "Python": {
+      "blank": 3683,
+      "code": 20481,
+      "comment": 855,
+      "files": 91
+    },
+    "TOML": {
+      "blank": 6,
+      "code": 49,
+      "comment": 3,
+      "files": 1
+    },
+    "YAML": {
+      "blank": 36,
+      "code": 1313,
+      "comment": 99,
+      "files": 13
+    }
+  },
+  "lines": {
+    "blank": 3725,
+    "code": 21843,
+    "comment": 957,
+    "total": 26525
+  },
+  "python": {
+    "ast_nodes": 135063,
+    "classes": 170,
+    "functions": 1392,
+    "imports": 693,
+    "max_depth": 17,
+    "methods": 547,
+    "modules": 91
+  },
+  "root_label": "reference-corpus"
+}

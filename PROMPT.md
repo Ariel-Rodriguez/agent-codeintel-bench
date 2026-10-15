@@ -12,7 +12,7 @@ You are setting up and running a code-intelligence A/B test in this repository.
 ## Steps
 
 1. **Understand the repo.** Read `README.md`, `CONTRIBUTING.md`,
-   `harness/adapters.md`, and `FINDINGS.md`. Inspect `harness/` and `benchmarks/`.
+   `harness/adapters.md`, and the reports under `docs/` (start with `docs/index.md`). Inspect `harness/` and `benchmarks/`.
 2. **Inspect the inputs.** Look under `inputs/`:
    - `inputs/repo.zip` or `inputs/repo/` — the repository to test (if absent,
      use the bundled fixture `fixtures/widget-service`).

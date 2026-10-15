@@ -8,9 +8,17 @@ code-intelligence tools promise better navigation, impact analysis, repair, and
 cross-session reuse. This repo exists to *test* that promise instead of assuming
 it — and to make it easy to add the next tool.
 
-The first measured result is in [`FINDINGS.md`](FINDINGS.md): a structural
+The first completed result is **report 0001** on the [project site](https://ariel-rodriguez.github.io/agent-codeintel-bench/): a structural
 code-index extension produced **no correctness benefit** and a
-**model-dependent** token effect across four task families.
+**model-dependent** token effect across four task families. Reports live under
+[`docs/`](docs/) and are published as a GitHub Pages site.
+
+## Reports
+
+- [Report 0001 — structural code-index extension](docs/reports/0001-structural-code-index.md)
+- [Report 0002 — agent-kernel](docs/reports/0002-agent-kernel.md) (in progress)
+- [Report format](docs/format.md)
+
 
 ## How it works
 
@@ -136,6 +144,13 @@ source work/experiment.env
 harness/run_suite.sh run1 && harness/evaluate.py run1
 ```
 
+## Reporting
+
+Results are published on GitHub Pages (source in [`docs/`](docs/)) using a fixed
+scientific format: Hypothesis, Method, Materials, Evidence, Analysis, Threats,
+Conclusion, Reproduction. Corpora are described by aggregate shape (files, lines,
+symbol and AST-node counts) only — never source, identifiers, or semantics.
+
 ## Claiming a test
 
 Before running, reserve the `(tool × task family × repo × model)` cell by
@@ -163,7 +178,7 @@ PY
 
 ## Limitations
 
-- The reference corpus behind `FINDINGS.md` is private; the public fixture is a
+- The reference corpus behind report 0001 is private; the public fixture is a
   neutral stand-in with the same task shape, so absolute numbers may differ.
 - The scoring rubric is keyword-based and coarse; treat it as a smoke test, not
   a ground truth. Hidden tests are on the roadmap.

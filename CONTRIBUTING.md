@@ -36,7 +36,7 @@ avoid duplicated effort:
 3. A claim is valid for **14 days**. Comment to renew; a stale claim may be
    released.
 4. Post results as a comment on the issue, linking the run directory and its
-   `metrics.json`, plus any `FINDINGS.md` update.
+   `metrics.json`, plus a new or updated report under `docs/reports/`.
 5. Close the issue when the finding is committed.
 
 Do not open a second claim for an open `(tool, task family, repo)` cell. If you
