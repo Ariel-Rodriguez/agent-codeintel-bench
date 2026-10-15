@@ -92,6 +92,41 @@ changed. Wall time and output limits apply equally, retain terminated output and
 record termination; combined-output polling can overshoot briefly, with a hard
 per-file cap. All attempted costs remain in summaries, including failures.
 
+### Execute audit contract and offline verification
+
+`python3 harness/verify_wrappers.py --conditions experiments/kernel-retrieval.json`
+currently exits **2 / BLOCKED**, not success. Implement the sidecar in the actual
+pinned Kernel `execute` functions before attempting a probe. `probe_load.mjs`
+continues to prove only import/registration and is intentionally separate.
+
+The host verifier accepts `--condition-id ID --cell DIR` (add `--probe` for a
+captured compatibility probe). It requires paired records with `phase: enter`
+and `phase: complete`, `toolCallId`, `tool`, `implementation_id`, `revision`,
+boolean `success`, and completion `settings: {compression, retrieval}`. Completion
+must capture `pre_text`, `post_text`, their `pre_text_bytes`/`post_text_bytes`,
+`pre_sha256`/`post_sha256` (UTF-8 text only), and `compression_changed`. Sidecars
+must never be returned in tool content. Keep diagnostic specifications host-side;
+match them against captured output only after the run.
+
+Source review must populate the condition's `instrumentation` (`revision`,
+`patch_sha256`, `execute_locations`) and `expected_activation`:
+`wrapper_implementations` maps tool names to reviewed implementation IDs;
+`settings` specifies effective settings. Apply the identical instrumentation patch
+to B/C. The verifier checks hashes, settings, visible output and joined execution;
+it does not claim to authenticate arbitrary agent-writable audit files. Use a
+trusted capture path/instrumentation when producing real evidence.
+
+A probe also needs host-created `probe_host.json` with `network_mode: none`,
+`image_digest` and `production_flags` equal to `conditions.pi_flags(condition)`.
+Exercise harmless read/edit/search calls in the exact production invocation,
+including `--no-extensions -e ENTRY --tools LIST`; a custom direct-call mock is
+not a production compatibility probe. Both built-in-name wrappers and
+`code_search` must execute. Real cells require their own evidence (search use is
+reported separately, not required just because it was registered in the probe).
+The dynamic no-network production probe and B/C behavior contrast are **BLOCKED**
+until the pinned source/instrumented image exists; no alternate mock probe is
+presented as proof. Synthetic verifier tests test the host contract only.
+
 ## Tools worth adding next
 
 - LSP-backed symbol tools (e.g. a language-server bridge)

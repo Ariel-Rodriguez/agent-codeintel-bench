@@ -421,6 +421,11 @@ def parse_run(directory: pathlib.Path, *, spec: dict | None = None,
     metrics.update(response_metrics(calls, tokenizer=tokenizer))
     metrics.update(recovery_metrics(calls, spec=spec, audit=audit))
     metrics.update(verify_activation(calls, condition=condition or {}, audit=audit))
+    if (condition or {}).get("expected_activation", {}).get("wrapper_tools"):
+        from verify_wrappers import check_capture
+        metrics["wrapper_proof"] = check_capture(directory, condition)
+        if metrics["wrapper_proof"]["status"] != "verified":
+            metrics["activation_status"] = "unknown" if audit is None else "contradicted"
     metrics["trace_schema_validation"] = spec.get("trace_schema_validation", "BLOCKED: no pinned-container trace supplied")
     with (directory / "tool_metrics.jsonl").open("w") as handle:
         for c in calls:
