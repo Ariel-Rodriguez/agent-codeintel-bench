@@ -51,19 +51,32 @@ run_one() {
 
   [ -d /corpus ] || die "/corpus not mounted"
 
-  local scratch="/bench/work/experiment-$arm"
-  rm -rf "$scratch"; mkdir -p "$scratch"
-  cp -R /corpus/. "$scratch/"
+  local scratch
+  if [ -n "${PERSIST_DIR:-}" ]; then
+    # Cross-session run: the workspace (and any tool state on disk) survives
+    # between stages. Seed once, then reuse.
+    scratch="${PERSIST_DIR}/experiment-$arm"
+    if [ ! -d "$scratch" ]; then
+      mkdir -p "$scratch"
+      cp -R /corpus/. "$scratch/"
+    fi
+  else
+    scratch="/bench/work/experiment-$arm"
+    rm -rf "$scratch"; mkdir -p "$scratch"
+    cp -R /corpus/. "$scratch/"
+  fi
 
   # A tool may require a fixture (e.g. an introduced bug) before the task.
   if [ -f /task/fixture.patch ]; then
     git -C "$scratch" init -q 2>/dev/null || true
     git -C "$scratch" apply /task/fixture.patch || die "fixture.patch did not apply"
   fi
-  ( cd "$scratch" \
-      && git init -q \
-      && git add -A \
-      && git -c user.email=bench@local -c user.name=bench commit -qm "condition snapshot" )
+  if [ ! -d "$scratch/.git" ]; then
+    ( cd "$scratch" \
+        && git init -q \
+        && git add -A \
+        && git -c user.email=bench@local -c user.name=bench commit -qm "condition snapshot" )
+  fi
 
   local cfg; cfg="$(setup_agent_dir)"
   local out="/out/$RUN_ID/$arm/$task"
@@ -136,15 +149,19 @@ probe() {
   [ -n "$entry" ] || die "no declared or discoverable entry under $target"
   echo "entry: $entry"
 
-  local rc=0
+  local rc=0 loader="$ROOT/harness/probe_load.mjs"
   if node --experimental-permission --allow-fs-read="$target" -e 'process.exit(0)' >/dev/null 2>&1; then
-    PROBE_RUN=1 node --experimental-permission --allow-fs-read="$target" "$entry" 2>&1 || rc=$?
+    node --experimental-strip-types --experimental-permission \
+      --allow-fs-read="$target" --allow-fs-read="$loader" \
+      "$loader" "$entry" 2>&1 || rc=$?
   else
-    PROBE_RUN=1 node "$entry" 2>&1 || rc=$?
+    node --experimental-strip-types "$loader" "$entry" 2>&1 || rc=$?
   fi
-  echo "(access-denied and DNS-resolution failures above are the contained outcome)"
-  # The demo exits 0; a real entry that crashes is reported as a non-zero probe.
-  return "$rc"
+  if [ "$rc" != "0" ]; then
+    die "probe: the entry failed to load or register under a no-network, read-only container (rc=$rc)"
+  fi
+  echo "(load verified; container had no network and a read-only root)"
+  return 0
 }
 
 case "$MODE" in
