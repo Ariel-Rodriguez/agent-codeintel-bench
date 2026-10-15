@@ -1,5 +1,5 @@
 """Tests for the supervisor-side secret primitives."""
-import pytest
+import unittest
 
 from widgets.secret_access import SupervisorBroker, WidgetAccessRefusal
 
@@ -19,5 +19,5 @@ def test_admit_returns_an_opaque_handle() -> None:
 
 
 def test_admit_refuses_when_the_supervisor_cannot_resolve() -> None:
-    with pytest.raises(WidgetAccessRefusal):
+    with unittest.TestCase().assertRaises(WidgetAccessRefusal):
         SupervisorBroker(_Supervisor(None)).admit({"scope": "read"})
