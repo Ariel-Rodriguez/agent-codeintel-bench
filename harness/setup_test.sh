@@ -16,8 +16,13 @@ TOOL=""
 TOOL_TOOLS="read,bash,edit,write"
 BASE_TOOLS="read,bash,edit,write"
 VENV=1
-MODEL="${EXP_MODEL:-deepseek/deepseek-flash}"
-THINKING="${EXP_THINKING:-high}"
+# One model-configuration contract: PI_PROVIDER/PI_MODEL win; else EXP_MODEL.
+if [ -n "${PI_PROVIDER:-}" ] && [ -n "${PI_MODEL:-}" ]; then
+  MODEL="$PI_PROVIDER/$PI_MODEL"
+else
+  MODEL="${EXP_MODEL:-deepseek/deepseek-flash}"
+fi
+THINKING="${PI_THINKING:-${EXP_THINKING:-high}}"
 SRC_AGENT="${PI_USER_AGENT_DIR:-$HOME/.pi/agent}"
 
 while [ $# -gt 0 ]; do
@@ -89,14 +94,17 @@ for arm in baseline enhanced; do
 JSON
   chmod 600 "$cfg/settings.json"
 
-  # Optionally force all model traffic through the allowlisted gateway.
+  # Optionally force all model traffic through the allowlisted gateway. Fail if
+  # the provider is missing: a silently un-rewritten config would leak egress.
   if [ -n "${MODEL_GATEWAY:-}" ] && [ -f "$cfg/models.json" ]; then
     python3 - "$cfg/models.json" "${MODEL%%/*}" "$MODEL_GATEWAY" <<'PY'
 import json, sys
 path, provider, gateway = sys.argv[1], sys.argv[2], sys.argv[3]
 data = json.load(open(path))
-if provider in data.get("providers", {}):
-    data["providers"][provider]["baseUrl"] = gateway
+providers = data.get("providers", {})
+if provider not in providers:
+    raise SystemExit(f"provider {provider!r} is not in models.json; cannot route through the gateway")
+providers[provider]["baseUrl"] = gateway
 json.dump(data, open(path, "w"), indent=2)
 PY
   fi

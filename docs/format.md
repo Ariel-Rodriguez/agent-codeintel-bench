@@ -89,3 +89,25 @@ and give the aggregate shape instead.
 ## 9. Data
 
 Paths to raw streams, `metrics.json`, and the summarised CSV.
+
+## 10. Provenance checklist
+
+A report is not reviewable unless every item below is recorded (publish only the
+non-sensitive ones; keep private ones referenced by hash):
+
+- Tool: name, **exact revision** (commit sha or version), and any local patch.
+- Model: provider, model id, thinking level, and any revision/digest served.
+- Corpus: snapshot hash and aggregate shape (see section 3), plus the exclusion
+  rules (no credentials, no `.git`, no hooks, no environments, no answers).
+- Prompts: sha256 of each prompt actually sent.
+- References: sha256 of each `reference.json`; they stay host-side.
+- Images: digest of the baseline and per-tool images; lockfiles used.
+- Isolation: proof that the agent container had no reference/answer mount, and
+  network assertions (internal network, gateway allowlist, no external DNS/TCP).
+- Tool activation: per run, evidence the tool was **registered and called**, not
+  merely present. Report non-use runs instead of dropping them.
+- Failures: any cell that failed closed, with its exit code and stream status.
+- Adjudication: how each score was decided, including any manual override.
+
+Do not treat a README claim, a plan, or a model's own answer as a measured
+result. Unmeasured metrics are marked unavailable.

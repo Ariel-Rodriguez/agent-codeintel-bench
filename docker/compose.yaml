@@ -49,10 +49,10 @@ services:
       - /bench/configs:size=64m
       - /home/runner:size=128m
     volumes:
-      - ../inputs:/inputs:ro
-      - ../out:/bench/out
-      # Optional auth dir, read-only. The untrusted extension can read whatever
-      # is here; prefer a scoped, short-lived key.
+      # Only the results directory and the (optional) auth file are mounted.
+      # The corpus, the single task prompt, and the tool come from per-run mounts
+      # added by harness/run_isolated.sh. References are never mounted.
+      - ../out:/out
       - ${PI_AUTH_DIR:-../.no-auth}:/auth:ro
     environment:
       PI_USER_AGENT_DIR: /auth

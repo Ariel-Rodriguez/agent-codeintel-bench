@@ -5,6 +5,7 @@
 #   docker/run.sh tool <tool-dir> [tag]   build a per-tool image (deps + caches baked in)
 #   docker/run.sh run      prepare inputs, run the suite through the gateway, write out/
 #   docker/run.sh probe    static scan + no-network load of the untrusted extension
+#   docker/run.sh isolate  isolated counterbalanced experiment (fresh container per condition)
 #   docker/run.sh shell    interactive shell inside the bench container
 #   docker/run.sh agent    run one Pi agent with PROMPT.md as the first prompt
 #   docker/run.sh down     stop and remove containers + anonymous volumes
@@ -25,9 +26,10 @@ case "${1:-run}" in
     ;;
   run)   "${COMPOSE[@]}" run --rm bench run ;;
   probe) "${COMPOSE[@]}" run --rm probe probe ;;
+  isolate) "$ORIG_PWD/harness/run_isolated.sh" ;;
   shell) "${COMPOSE[@]}" run --rm bench shell ;;
   agent) "${COMPOSE[@]}" run --rm bench agent ;;
   down)  "${COMPOSE[@]}" down --volumes --remove-orphans ;;
   clean) "${COMPOSE[@]}" down --volumes --remove-orphans --rmi local ;;
-  *)     echo "usage: run.sh [build|tool|run|probe|shell|agent|down|clean]" >&2; exit 2 ;;
+  *)     echo "usage: run.sh [build|tool|isolate|run|probe|shell|agent|down|clean]" >&2; exit 2 ;;
 esac

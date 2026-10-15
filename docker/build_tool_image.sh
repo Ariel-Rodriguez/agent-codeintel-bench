@@ -54,6 +54,8 @@ if not entry:
 print(entry)
 PY
 )"
+[ -n "$ENTRY_REL" ] || { echo "error: could not determine the extension entry point for $TOOL_DIR (set pi.extensions or add src/index.ts)" >&2; exit 2; }
+[ -f "$TOOL_DIR/$ENTRY_REL" ] || { echo "error: declared entry $ENTRY_REL does not exist in $TOOL_DIR" >&2; exit 2; }
 TOOL_ENTRY="/opt/tools/$NAME/$ENTRY_REL"
 
 mkdir -p "$ROOT/work"

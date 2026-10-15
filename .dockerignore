@@ -1,7 +1,10 @@
-# Build context excludes everything generated or secret.
+# Build context excludes everything generated, secret, or reserved for scoring.
+# benchmarks/ is excluded on purpose: the agent container must never contain the
+# reference answers.
 .git
 .githooks
 .github
+benchmarks
 inputs
 out
 work

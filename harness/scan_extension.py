@@ -30,6 +30,10 @@ SOURCE_SUFFIXES = (".ts", ".js", ".mjs", ".cjs")
 
 
 def iter_sources(target: pathlib.Path):
+    if target.is_file():
+        if target.suffix in SOURCE_SUFFIXES:
+            yield target
+        return
     for path in sorted(target.rglob("*")):
         if not path.is_file() or path.suffix not in SOURCE_SUFFIXES:
             continue

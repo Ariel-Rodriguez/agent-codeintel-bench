@@ -97,4 +97,14 @@ The container needs model access, so it needs a key. Options:
    untrusted extension can read it. Accept that deliberately. The key is only
    ever used against the gateway's single upstream.
 
-Nothing is persisted: `configs/`, `work/`, `results/` and `$HOME` are tmpfs.
+Nothing is persisted by the container itself: `configs/`, `work/`, `results/` and
+`$HOME` are tmpfs. The only host-visible output is the results bind-mounted at
+`out/`, which you delete when you are done.
+
+## The isolated experiment
+
+`docker/run.sh isolate` runs the counterbalanced experiment with **one fresh
+container per condition** (see `harness/run_isolated.sh`). Each container gets
+only the corpus and one task prompt, mounted read-only; `reference.json` and other
+runs are never mounted. Scoring happens on the host, after the raw stream is
+captured.

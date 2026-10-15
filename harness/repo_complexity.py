@@ -122,8 +122,8 @@ def measure(root: pathlib.Path) -> dict:
                     py[key] = max(py[key], value)
                 else:
                     py[key] += value
-        if len(path.parts) - len(root.parts) >= 1:
-            dirs.add(str(path.parent.relative_to(root).parts[0]) if path.parent != root else ".")
+        if path.parent != root:
+            dirs.add(path.parent.relative_to(root).parts[0])
 
     py["modules"] = by_language.get("Python", {}).get("files", 0)
     return {

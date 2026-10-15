@@ -34,4 +34,4 @@ ENV PI_SKIP_VERSION_CHECK=1 \
     RUN_ID=run1
 
 ENTRYPOINT ["/bench/docker/entrypoint.sh"]
-CMD ["run"]
+CMD ["run-one"]
