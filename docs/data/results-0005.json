@@ -1,0 +1,108 @@
+{
+  "design": "A/B/C pilot n=3",
+  "model": "local Qwen3.8-27B IQ3_S 224k, medium",
+  "report": "0005",
+  "runs": [
+    {
+      "activation_status": "not_required",
+      "condition": "baseline",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 54361,
+      "total_tokens": 224256,
+      "trial": "t1",
+      "wall_seconds": 84.589
+    },
+    {
+      "activation_status": "verified",
+      "condition": "kernel_full",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 1,
+      "tool_response_text_bytes": 43725,
+      "total_tokens": 347711,
+      "trial": "t1",
+      "wall_seconds": 113.593
+    },
+    {
+      "activation_status": "verified",
+      "condition": "kernel_no_compression",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 32347,
+      "total_tokens": 142207,
+      "trial": "t1",
+      "wall_seconds": 80.815
+    },
+    {
+      "activation_status": "not_required",
+      "condition": "baseline",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 42582,
+      "total_tokens": 181279,
+      "trial": "t2",
+      "wall_seconds": 91.66
+    },
+    {
+      "activation_status": "verified",
+      "condition": "kernel_full",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 48352,
+      "total_tokens": 228716,
+      "trial": "t2",
+      "wall_seconds": 82.17
+    },
+    {
+      "activation_status": "verified",
+      "condition": "kernel_no_compression",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 33323,
+      "total_tokens": 168121,
+      "trial": "t2",
+      "wall_seconds": 98.392
+    },
+    {
+      "activation_status": "not_required",
+      "condition": "baseline",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 52118,
+      "total_tokens": 203869,
+      "trial": "t3",
+      "wall_seconds": 71.386
+    },
+    {
+      "activation_status": "verified",
+      "condition": "kernel_full",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 39495,
+      "total_tokens": 131933,
+      "trial": "t3",
+      "wall_seconds": 68.364
+    },
+    {
+      "activation_status": "verified",
+      "condition": "kernel_no_compression",
+      "correct": true,
+      "post_truncation_retrieval_calls": 0,
+      "repeat_file_read_calls": 0,
+      "tool_response_text_bytes": 40747,
+      "total_tokens": 109873,
+      "trial": "t3",
+      "wall_seconds": 63.674
+    }
+  ],
+  "task": "repair_retrieval_long",
+  "tool": "pi-agent-kernel b9e93be + instrumentation"
+}

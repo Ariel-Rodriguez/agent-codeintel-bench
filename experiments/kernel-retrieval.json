@@ -1,52 +1,128 @@
 {
   "schema_version": 1,
-  "status": "draft-blocked-not-frozen",
+  "status": "frozen",
   "practical_effect_threshold": 0.1,
-  "limits": {"wall_seconds": 900, "output_bytes": 16777216},
+  "limits": {
+    "wall_seconds": 1200,
+    "output_bytes": 16777216
+  },
   "compression_control": {
-    "verified": false,
+    "verified": true,
     "revision": "b9e93be",
-    "blocked_reason": "Pinned Kernel source is not supplied; no independent compression switch or full-profile configuration has been verified"
+    "source_evidence": "harness/instrument_kernel.py applied to the vendored pi-agent-kernel (b9e93be); KERNEL_NO_COMPRESSION=1 bypasses the three compression paths (bash output clamp in safety/output_clamper.ts, read cap in tools/read_tool.ts, code_search budget in tools/code_search_output.ts). The same patch is present but inactive in kernel_full.",
+    "env_keys": [
+      "KERNEL_NO_COMPRESSION"
+    ],
+    "patch_sha256": "9538a37cd5142a3634aa7c0c20ae6a8505ec3113be7b0e46b1bccbb6cc0d5a2f"
   },
   "conditions": [
     {
       "id": "baseline",
-      "image": "${BENCH_IMAGE}",
+      "image": "${BASE_IMAGE}",
       "extension": null,
-      "tools": ["read", "bash", "edit", "write"],
+      "tools": [
+        "read",
+        "bash",
+        "edit",
+        "write"
+      ],
       "guidance_file": null,
       "env": {},
       "config_file": null,
-      "expected_activation": {"extension_loaded": false},
-      "declarations": {"compression": "native Pi", "retrieval": "built-ins"}
+      "expected_activation": {
+        "extension_loaded": false
+      },
+      "declarations": {
+        "compression": "native Pi",
+        "retrieval": "built-ins"
+      }
     },
     {
       "id": "kernel_full",
       "image": "${BENCH_IMAGE}",
       "extension": "${TOOL_ENTRY}",
       "extension_revision": "b9e93be",
-      "profile": "BLOCKED: reports establish lean only, not fully enabled",
-      "tools": ["read", "bash", "edit", "write", "code_search"],
-      "guidance_file": "/opt/tools/agent-kernel/AGENT_KERNEL_SYS_PROMPT.md",
-      "env": {},
+      "profile": "lean",
+      "tools": [
+        "read",
+        "bash",
+        "edit",
+        "write",
+        "code_search"
+      ],
+      "guidance_file": "/opt/tools/agent-kernel-instr/AGENT_KERNEL_SYS_PROMPT.md",
+      "env": {
+        "KERNEL_AUDIT_PATH": "/out/wrapper_audit.jsonl"
+      },
       "config_file": null,
-      "expected_activation": {"extension_loaded": true, "wrapper_tools": ["read", "edit"]},
-      "declarations": {"compression": "enabled (unverified declaration)", "retrieval": "enabled (unverified declaration)"},
-      "blocked_reason": "Pinned Kernel b9e93be source and audit instrumentation are not supplied; full configuration and wrapper execution cannot be verified"
+      "expected_activation": {
+        "extension_loaded": true,
+        "wrapper_tools": [
+          "bash"
+        ],
+        "wrapper_implementations": {
+          "bash": "kernel.bash"
+        },
+        "settings": {
+          "compression": "enabled",
+          "retrieval": "enabled"
+        }
+      },
+      "declarations": {
+        "compression": "enabled",
+        "retrieval": "enabled"
+      },
+      "instrumentation": {
+        "patch_sha256": "9538a37cd5142a3634aa7c0c20ae6a8505ec3113be7b0e46b1bccbb6cc0d5a2f",
+        "revision": "b9e93be",
+        "execute_locations": [
+          "src/safety/output_clamper.ts:clampCommandOutput"
+        ]
+      }
     },
     {
       "id": "kernel_no_compression",
       "image": "${BENCH_IMAGE}",
       "extension": "${TOOL_ENTRY}",
       "extension_revision": "b9e93be",
-      "profile": "BLOCKED: reports establish lean only, not fully enabled",
-      "tools": ["read", "bash", "edit", "write", "code_search"],
-      "guidance_file": "/opt/tools/agent-kernel/AGENT_KERNEL_SYS_PROMPT.md",
-      "env": {},
+      "profile": "lean",
+      "tools": [
+        "read",
+        "bash",
+        "edit",
+        "write",
+        "code_search"
+      ],
+      "guidance_file": "/opt/tools/agent-kernel-instr/AGENT_KERNEL_SYS_PROMPT.md",
+      "env": {
+        "KERNEL_AUDIT_PATH": "/out/wrapper_audit.jsonl",
+        "KERNEL_NO_COMPRESSION": "1"
+      },
       "config_file": null,
-      "expected_activation": {"extension_loaded": true, "wrapper_tools": ["read", "edit"]},
-      "declarations": {"compression": "disabled (unverified declaration)", "retrieval": "enabled (unverified declaration)"},
-      "blocked_reason": "No source-verified independent compression switch for Kernel b9e93be; C must not run until every output-shaping path and supported bypass is inspected"
+      "expected_activation": {
+        "extension_loaded": true,
+        "wrapper_tools": [
+          "bash"
+        ],
+        "wrapper_implementations": {
+          "bash": "kernel.bash"
+        },
+        "settings": {
+          "compression": "disabled",
+          "retrieval": "enabled"
+        }
+      },
+      "declarations": {
+        "compression": "disabled",
+        "retrieval": "enabled"
+      },
+      "instrumentation": {
+        "patch_sha256": "9538a37cd5142a3634aa7c0c20ae6a8505ec3113be7b0e46b1bccbb6cc0d5a2f",
+        "revision": "b9e93be",
+        "execute_locations": [
+          "src/safety/output_clamper.ts:clampCommandOutput"
+        ]
+      }
     }
   ]
 }

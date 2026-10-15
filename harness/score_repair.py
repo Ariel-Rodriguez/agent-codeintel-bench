@@ -42,10 +42,15 @@ def snapshot(workspace):
 
 def safe_untracked(archive, workspace):
     total = 0
+    # Tool infrastructure (caches, indexes) is the extension's state, not the
+    # agent's repair; skip it instead of rejecting the whole cell.
+    infra = {".git", ".venv", ".pi", ".codeindex", ".cache", ".pytest_cache", "__pycache__"}
     with tarfile.open(archive) as tar:
         for index, member in enumerate(tar):
             path = pathlib.PurePosixPath(member.name)
-            if path.is_absolute() or ".." in path.parts or not path.parts or path.parts[0] in (".git", ".venv"):
+            if not path.parts or path.parts[0] in infra:
+                continue
+            if path.is_absolute() or ".." in path.parts:
                 raise RepairRejected(f"unsafe untracked path: {member.name}")
             if not member.isfile() and not member.isdir():
                 raise RepairRejected(f"untracked links/special files forbidden: {member.name}")
