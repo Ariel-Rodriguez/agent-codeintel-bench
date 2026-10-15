@@ -15,6 +15,7 @@ Docker box with **no internet egress**, so a bad tool cannot phone home.
 | Read the results | [website](https://ariel-rodriguez.github.io/agent-codeintel-bench/) · [`docs/index.md`](docs/index.md) |
 | Write a report in the standard format | [`docs/format.md`](docs/format.md) |
 | See the reports | [`docs/reports/`](docs/reports/) (0001 concluded, 0002 blocked) |
+| Evaluate a candidate against vanilla and configured Pi | [`docs/dual-baseline.md`](docs/dual-baseline.md) · [`experiments/dual-baseline.json`](experiments/dual-baseline.json) (blocked template) |
 | Run a test in the isolated container | [`docker/README.md`](docker/README.md) |
 | Add a new tool to test | [`harness/adapters.md`](harness/adapters.md) |
 | Bring my own repo + tool | [`harness/setup_test.sh`](harness/setup_test.sh) |
@@ -25,8 +26,10 @@ Docker box with **no internet egress**, so a bad tool cannot phone home.
 
 ## In one line
 
-`baseline (read,bash,edit,write)` vs `enhanced (+one tool)`, four task families,
-counterbalanced trials, every number backed by a stored run.
+`vanilla` vs `vanilla + candidate` **and independently** `configured Pi` vs
+`configured Pi + candidate`: existing task families, isolated counterbalanced
+trials, separate scientific/adoption verdicts, every number backed by a stored
+run. Legacy A/B and mechanism-isolating A/B/C experiments remain supported.
 
 ## License
 

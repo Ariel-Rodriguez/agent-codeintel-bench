@@ -2,6 +2,7 @@
 """Host-side condition declarations. Labels never imply supported Kernel flags."""
 from __future__ import annotations
 
+import copy
 import json
 import os
 import pathlib
@@ -16,12 +17,90 @@ ORDERS = (("baseline", "kernel_full", "kernel_no_compression"),
 CONTROL_ENV = {"CODEINTEL_EXT", "TOOL_ENTRY", "GUIDANCE_FILE", "BASELINE_TOOLS", "ENHANCED_TOOLS"}
 
 
+def condition_orders(ids):
+    """Preserve historical ABC order; use a balanced Latin square otherwise."""
+    if set(ids) == set(ORDERS[0]):
+        return ORDERS
+    n = len(ids)
+    if n < 2:
+        raise ValueError("at least two conditions are required")
+    first = [0]
+    for i in range(1, n):
+        first.append((i + 1) // 2 if i % 2 else n - i // 2)
+    rows = [tuple(ids[(v + shift) % n] for v in first) for shift in range(n)]
+    return tuple(rows + [tuple(reversed(row)) for row in rows]) if n % 2 else tuple(rows)
+
+
+def expand_comparisons(data):
+    """Opt-in dual-baseline schema. Inheritance, not copied settings, defines controls."""
+    from baseline import (exact_keys, snapshot_condition, validate_assets, validate_env,
+                          validate_proofs)
+    candidate = data.get("candidate")
+    exact_keys(candidate, {"extension", "tools", "env", "guidance_files", "activation"}, "candidate")
+    validate_assets([candidate["extension"]], extension=True)
+    validate_assets(candidate["guidance_files"])
+    validate_env(candidate["env"])
+    validate_proofs([candidate["activation"]], [candidate["extension"]])
+    if not isinstance(candidate["tools"], list) or any(not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_*]*", t) for t in candidate["tools"]):
+        raise ValueError("candidate tools must be an explicit allowlist")
+    originals = {c["id"]: c for c in data["conditions"]}
+    expanded = {}
+    for cid, c in originals.items():
+        if "inherits" not in c:
+            exact_keys(c, {"id", "image", "snapshot"}, "comparison baseline")
+            expanded[cid] = snapshot_condition(c)
+    for cid, c in originals.items():
+        if "inherits" not in c:
+            continue
+        exact_keys(c, {"id", "inherits"}, "candidate condition")
+        if c["inherits"] not in expanded or "inherits" in expanded[c["inherits"]]:
+            raise ValueError("candidate must inherit directly from a frozen baseline")
+        parent = expanded[c["inherits"]]
+        if any(k in parent["env"] and parent["env"][k] != v for k, v in candidate["env"].items()):
+            raise ValueError("candidate may not override baseline environment")
+        result = copy.deepcopy(parent)
+        result.update(id=cid, inherits=c["inherits"])
+        result["extensions"] += [candidate["extension"]]
+        result["guidance_files"] += candidate["guidance_files"]
+        result["tools"] += [t for t in candidate["tools"] if t not in result["tools"]]
+        result["env"].update(candidate["env"])
+        result["activation"] += [candidate["activation"]]
+        result["expected_activation"] = {"extension_loaded": True}
+        validate_assets(result["extensions"], extension=True)
+        validate_assets(result["guidance_files"])
+        validate_proofs(result["activation"], result["extensions"])
+        expanded[cid] = result
+    comparisons = data["comparisons"]
+    ids = [p["id"] for p in comparisons]
+    if not ids or len(ids) != len(set(ids)) or any(not re.fullmatch(r"[a-z][a-z0-9_]*", i) for i in ids):
+        raise ValueError("comparison IDs must be unique safe identifiers")
+    for pair in comparisons:
+        if set(pair) - {"id", "purpose", "baseline", "candidate"}:
+            raise ValueError("unknown comparison fields")
+        purpose = pair.get("purpose", pair["id"])
+        left, right = expanded.get(pair["baseline"]), expanded.get(pair["candidate"])
+        if purpose not in ("scientific", "adoption") or not left or not right or right.get("inherits") != left["id"]:
+            raise ValueError("comparison needs scientific/adoption purpose and baseline plus inherited candidate")
+        if left["snapshot"]["data"]["kind"] != ("personal" if purpose == "adoption" else "vanilla"):
+            raise ValueError("comparison purpose does not match baseline kind")
+        if left["model"] != right["model"] or left["image"] != right["image"]:
+            raise ValueError("paired model and image must be identical")
+    if {c for p in comparisons for c in (p["baseline"], p["candidate"])} != set(expanded):
+        raise ValueError("every comparison condition must belong to a declared pair")
+    if not data.get("baseline_differences"):
+        raise ValueError("document vanilla/personal baseline differences")
+    data["conditions"] = [expanded[c["id"]] for c in data["conditions"]]
+
+
 def load_manifest(path):
     data = json.loads(pathlib.Path(path).read_text())
     conditions = data["conditions"]
     ids = [c["id"] for c in conditions]
     if len(ids) != len(set(ids)) or any(not re.fullmatch(r"[a-z][a-z0-9_]*", cid) for cid in ids):
         raise ValueError("condition IDs must be unique safe identifiers")
+    if "comparisons" in data:
+        expand_comparisons(data)
+        conditions = data["conditions"]
     limits = data.get("limits", {})
     if any(type(limits.get(k)) is not int or limits[k] <= 0 for k in ("wall_seconds", "output_bytes")):
         raise ValueError("positive equal wall_seconds and output_bytes limits are required")
@@ -34,7 +113,7 @@ def load_manifest(path):
                                                 for k in c["env"]):
             raise ValueError(f"{c['id']}: unsafe or harness-reserved environment key")
     by_id = {c["id"]: c for c in conditions}
-    if "kernel_no_compression" in by_id:
+    if "comparisons" not in data and "kernel_no_compression" in by_id:
         b, c = by_id.get("kernel_full"), by_id["kernel_no_compression"]
         if not b:
             raise ValueError("C requires B")
@@ -99,8 +178,14 @@ def pi_flags(condition):
     flags = ["--mode", "json", "--print", "--no-extensions", "--no-mcp", "--no-skills",
              "--no-prompt-templates", "--no-themes", "--no-context-files", "--no-approve",
              "--tools", ",".join(condition["tools"])]
+    entries = [a["entry"] for a in condition.get("extensions", [])]
     if condition.get("extension"):
-        flags += ["-e", condition["extension"]]
+        entries.append(condition["extension"])
+    for entry in entries:
+        flags += ["-e", entry]
+    guidance = [a["entry"] for a in condition.get("guidance_files", [])]
     if condition.get("guidance_file"):
-        flags += ["--append-system-prompt", condition["guidance_file"]]
+        guidance.append(condition["guidance_file"])
+    for entry in guidance:
+        flags += ["--append-system-prompt", entry]
     return flags

@@ -1,5 +1,11 @@
 # Adding a code-intelligence tool
 
+For new candidate evaluations prefer the manifest-based
+[dual-baseline workflow](../docs/dual-baseline.md): scientific and adoption pairs,
+frozen sanitized baselines, explicit inheritance and execution proof. The
+candidate alone changes within each pair; a personal baseline may already load
+other pinned extensions. The two-arm adapter below remains supported.
+
 The harness treats "enhanced" as *baseline plus one tool*. A tool is any Pi
 extension, MCP server, or custom tool set that adds structural code intelligence
 (symbols, call graphs, references, impact). The only contract is the two env
@@ -42,24 +48,21 @@ source work/tool.env
 `provision.sh` (build-time setup) and `warmup.sh` (model download) are optional
 hooks inside the tool directory.
 
-## Kernel retrieval experiment — source-dependent BLOCKED items
+## Kernel retrieval experiment — source-dependent requirements
 
-`experiments/kernel-retrieval.json` is a **draft, not a frozen treatment**.
-Reports 0003–0004 pin Kernel `b9e93be` / v0.4.0, **lean**. No pinned Kernel
-source, instrumented image, raw container Pi trace or tokenizer assets are
-supplied in this repository. Do not infer “fully enabled” from those reports.
+`experiments/kernel-retrieval.json` now freezes Kernel `b9e93be` / v0.4.0,
+**lean**, with the versioned `harness/instrument_kernel.py` patch. Report 0005
+supersedes the earlier draft-blocked status: its A/B/C pilot captured verified
+wrapper execution and the compression contrast. The bypass is a reviewed local
+patch, **not** a supported upstream switch. Raw traces and provisioned images are
+not guaranteed to be present in a fresh checkout.
 
-- **B BLOCKED:** inspect that exact revision, expand the full revision hash,
-  establish the actual full configuration and add identical B/C execute-function
-  instrumentation before clearing `blocked_reason`.
-- **C BLOCKED:** no independent supported compression switch has been verified.
-  Inspect read clamping, search compaction, edit-result shaping, any shell
-  shaping, and context hooks. Do not invent an environment flag. A versioned
-  bypass patch is a separate treatment, not a supported upstream ablation.
-- **Compatibility BLOCKED:** validate raw event normalization against Pi 1.2.0
-  from the actual container. Synthetic unit traces do not establish compatibility.
-- **Exposure/pilots BLOCKED:** validate diagnostic pre/post visibility and real
-  multi-cycle inspect/edit/test traces before freezing tasks or starting trials.
+For a new run, inspect the pinned source, apply identical B/C instrumentation,
+provision images explicitly, and capture production compatibility/execution
+proof again. Missing prerequisites remain blocked. Synthetic unit traces do not
+establish real Pi compatibility, exposure, or performance. The single repeated
+read and zero post-truncation retrieval events in the pilot do not establish
+repeated retrieval as the primary mechanism of its observed token regression.
 
 All compression/retrieval labels are declarations, not Kernel settings. To unblock
 C, the manifest requires `compression_control.verified`, exact `revision`,
@@ -77,7 +80,7 @@ The isolated runner uses ABC, BCA, CAB, ACB, CBA, BAC sequentially (3-trial pilo
 or 6-trial run). Existing A/B mode remains available without a manifest. Every
 cell gets only its own writable `/out`; there is no Compose default result
 mount. Hidden tests, references and metrics specs never enter the agent container.
-A/B/C use the same declared tool image, with Kernel unloaded in A. Missing
+B/C use the same declared tool image; A uses `BASE_IMAGE` without Kernel. Missing
 images are blocked; orchestration uses local images (`--pull never`). Scoring
 uses one trusted `SCORING_IMAGE` (defaults to A's image), never each arm's image.
 Snapshot commit dates are deterministic. Do not reuse a nonempty cell directory.
@@ -95,8 +98,9 @@ per-file cap. All attempted costs remain in summaries, including failures.
 ### Execute audit contract and offline verification
 
 `python3 harness/verify_wrappers.py --conditions experiments/kernel-retrieval.json`
-currently exits **2 / BLOCKED**, not success. Implement the sidecar in the actual
-pinned Kernel `execute` functions before attempting a probe. `probe_load.mjs`
+without `--cell` exits **2 / BLOCKED**, not success: declarations are not captured
+evidence. Apply the existing instrumentation to the pinned source and capture a
+real probe before claiming compatibility. `probe_load.mjs`
 continues to prove only import/registration and is intentionally separate.
 
 The host verifier accepts `--condition-id ID --cell DIR` (add `--probe` for a
@@ -123,9 +127,9 @@ including `--no-extensions -e ENTRY --tools LIST`; a custom direct-call mock is
 not a production compatibility probe. Both built-in-name wrappers and
 `code_search` must execute. Real cells require their own evidence (search use is
 reported separately, not required just because it was registered in the probe).
-The dynamic no-network production probe and B/C behavior contrast are **BLOCKED**
-until the pinned source/instrumented image exists; no alternate mock probe is
-presented as proof. Synthetic verifier tests test the host contract only.
+A fresh dynamic no-network production probe and B/C behavior contrast require
+the pinned source/instrumented image and new captures; no alternate mock probe
+is presented as proof. Synthetic verifier tests test the host contract only.
 
 ### Host-only repair materials
 

@@ -17,7 +17,7 @@ def load_events(stream: pathlib.Path) -> list[dict]:
     if not stream.exists():
         return []
     events = []
-    for line in stream.read_text(errors="replace").splitlines():
+    for line in stream.read_text(errors="replace").split("\n"):
         try:
             event = json.loads(line)
         except ValueError:
@@ -396,6 +396,76 @@ def verify_activation(calls: list[dict], *, condition: dict, audit: list[dict] |
             "code_search_wrapper_executions": tools.get("code_search", 0) if audit is not None else None}
 
 
+def snapshot_capture_errors(directory):
+    termination = directory / "termination.json"
+    term = json.loads(termination.read_text()) if termination.exists() else {}
+    if term.get("reason") in ("wall_limit", "output_limit"):
+        return []  # A bounded, activated attempt is a correctness failure, not missing data.
+    if term.get("reason") != "completed" or term.get("exit_code") != 0:
+        return ["missing or unsuccessful completed termination evidence"]
+    stream = directory / "stdout.jsonl"
+    try:
+        events = [json.loads(line) for line in stream.read_text().split("\n") if line.strip()]
+        messages = [e["message"] for e in events if e.get("type") == "message_end" and e.get("message", {}).get("role") == "assistant"]
+        if not messages or messages[-1].get("stopReason") != "stop":
+            return ["incomplete final assistant response"]
+        if any(not c["completed"] for c in normalize_tool_calls(events)):
+            return ["incomplete tool execution"]
+    except (OSError, ValueError, AttributeError, KeyError, TypeError):
+        return ["missing or malformed JSON event capture"]
+    return []
+
+
+def verify_treatment(directory, calls, condition):
+    """Source-reviewed sidecar contract for non-Kernel extensions/hooks.
+
+    This checks captured evidence, not the authenticity of agent-writable files.
+    Production captures need trusted instrumentation; registration alone fails.
+    """
+    records = load_events(directory / "activation.jsonl")
+    proofs = condition.get("activation", [])
+    reasons, counts = [], {}
+    expected = {(p["id"], p["revision"]): p for p in proofs}
+    for record in records:
+        proof = expected.get((record.get("id"), record.get("revision")))
+        if not proof or record.get("settings") != proof["settings"] or record.get("conflicts") != []:
+            reasons.append("unexpected implementation, settings or wrapper conflict")
+    by_id = {c["toolCallId"]: c for c in calls}
+    for proof in proofs:
+        if "wrapper_capture" in proof:
+            from verify_wrappers import check_capture
+            wrapper = check_capture(directory, {"extension_revision": proof["revision"],
+                "instrumentation": proof["wrapper_capture"]["instrumentation"],
+                "expected_activation": {"wrapper_tools": proof["executed_tools"],
+                    "wrapper_implementations": proof["wrapper_capture"]["wrapper_implementations"], "settings": proof["settings"]}})
+            if wrapper["status"] != "verified":
+                reasons += wrapper["reasons"] + [str(e) for e in wrapper["audit_errors"]]
+            counts[proof["id"]] = wrapper["execution"]["wrapper_execution_by_tool"]
+            continue
+        matching = [r for r in records if r.get("id") == proof["id"] and r.get("revision") == proof["revision"]
+                    and r.get("settings") == proof["settings"] and r.get("conflicts") == []]
+        loaded = [r for r in matching if r.get("phase") == "loaded" and
+                  set(r.get("registered_tools", [])) == set(proof["registered_tools"])]
+        if len(loaded) != 1:
+            reasons.append(f"{proof['id']}: missing/duplicate load and tool-registration evidence")
+        count = 0
+        for tool in proof["executed_tools"]:
+            executions = [r for r in matching if r.get("phase") == "execute" and r.get("tool") == tool
+                          and r.get("success") is True and (c := by_id.get(r.get("toolCallId")))
+                          and c["name"] == tool and c.get("has_start") and c["completed"] and c["isError"] is False]
+            if not executions:
+                reasons.append(f"{proof['id']}: required tool did not verifiably execute: {tool}")
+            count += len(executions)
+        for hook in proof["hooks"]:
+            executions = [r for r in matching if r.get("phase") == "hook" and r.get("hook") == hook and r.get("success") is True]
+            if not executions:
+                reasons.append(f"{proof['id']}: required hook did not verifiably execute: {hook}")
+            count += len(executions)
+        counts[proof["id"]] = count
+    return {"status": "contradicted" if reasons else "verified" if proofs else "not_required",
+            "reasons": reasons, "execution_counts": counts}
+
+
 def assistant_texts(stream: pathlib.Path):
     for event in load_events(stream):
         message = event.get("message") or {}
@@ -431,6 +501,11 @@ def parse_run(directory: pathlib.Path, *, spec: dict | None = None,
         if text:
             metrics["final_text"] = text
     metrics["pricing_complete"] = metrics["responses"] > 0 and metrics["responses"] == metrics["priced_responses"]
+    if "snapshot" in (condition or {}):
+        for field, key in (("input_tokens", "input"), ("output_tokens", "output"), ("total_tokens", "totalTokens")):
+            if not metrics["responses"] or any(type((m.get("usage") or {}).get(key)) not in (int, float)
+                                              for m, _ in assistant_texts(directory / "stdout.jsonl")):
+                metrics[field] = None  # Missing usage is not measured zero.
     executed = [c for c in calls if c.get("has_start") or c["completed"]]
     metrics["tool_calls_requested"] = len(calls)
     metrics["tool_calls_total"] = len(executed)
@@ -452,6 +527,9 @@ def parse_run(directory: pathlib.Path, *, spec: dict | None = None,
                 c.pop("wrapper_implementation", None)
         if metrics["wrapper_proof"]["status"] != "verified":
             metrics["activation_status"] = "unknown" if audit is None else "contradicted"
+    if "snapshot" in (condition or {}):
+        metrics["treatment_proof"] = verify_treatment(directory, calls, condition)
+        metrics["activation_status"] = metrics["treatment_proof"]["status"]
     metrics["trace_schema_validation"] = spec.get("trace_schema_validation", "BLOCKED: no pinned-container trace supplied")
     with (directory / "tool_metrics.jsonl").open("w") as handle:
         for c in calls:
@@ -506,7 +584,11 @@ def main(argv: list[str] | None = None) -> int:
     run_dir = args.results / args.label
     if not run_dir.is_dir():
         parser.error(f"no results at {run_dir}")
-    conditions = json.loads(args.conditions.read_text())["conditions"] if args.conditions else [
+    from conditions import load_manifest
+    declaration = json.loads(args.conditions.read_text()) if args.conditions else None
+    if declaration is not None and "comparisons" in declaration:
+        declaration = load_manifest(args.conditions)
+    conditions = declaration["conditions"] if declaration is not None else [
         {"id": p.name} for p in sorted(run_dir.iterdir()) if p.is_dir()]
     rows, missing_conditions = [], []
     for condition in conditions:
@@ -538,6 +620,18 @@ def main(argv: list[str] | None = None) -> int:
             stream = directory / "stdout.jsonl"
             ref = reference_for(args.references, task)
             repair = directory / "repair_result.json"
+            runtime_errors = []
+            if "snapshot" in condition:
+                from baseline import verify_runtime
+                captured = directory / "condition.json"
+                runtime_path = directory / "runtime_metadata.json"
+                if not captured.is_file() or not runtime_path.is_file():
+                    runtime_errors = ["missing host condition or runtime provenance"]
+                else:
+                    # Use host-resolved paths, not unexpanded manifest variables.
+                    resolved = json.loads(captured.read_text())
+                    runtime_errors = verify_runtime(resolved, json.loads(runtime_path.read_text()))
+                runtime_errors += snapshot_capture_errors(directory)
             if condition.get("blocked_reason"):
                 metrics["cell_status"] = "blocked"
                 metrics["invalid_reason"] = condition["blocked_reason"]
@@ -552,8 +646,12 @@ def main(argv: list[str] | None = None) -> int:
                 metrics["invalid_reason"] = "no completed assistant messages in stream"
             elif condition.get("expected_activation", {}).get("wrapper_tools") and metrics["activation_status"] != "verified":
                 metrics["invalid_reason"] = "wrapper execution not verified"
+            elif "snapshot" in condition and (runtime_errors or metrics["activation_status"] not in ("verified", "not_required")):
+                metrics["invalid_reason"] = "; ".join(runtime_errors + metrics["treatment_proof"]["reasons"])
             elif term.get("reason") in ("wall_limit", "output_limit"):
-                metrics.update(cell_status="valid_failure", score=0, score_max=1, checks={"limit": False})
+                method = "executable_tests" if (args.references / task / "verify.json").exists() else "rubric"
+                maximum = score(json.loads(ref.read_text()), "")["score_max"] if method == "rubric" and ref.exists() else 1
+                metrics.update(cell_status="valid_failure", score=0, score_max=maximum, checks={"limit": False}, scoring_method=method)
             elif exit_code != 0 or metrics["error_messages"] or any(r in ("error", "aborted") for r in metrics["stop_reasons"]):
                 metrics["invalid_reason"] = f"execution error: exit={exit_code}, errors={metrics['error_messages']}"
             elif repair.exists():
@@ -562,10 +660,11 @@ def main(argv: list[str] | None = None) -> int:
                     metrics["invalid_reason"] = rr.get("reason", "scorer infrastructure error")
                 else:
                     passed = bool(rr.get("passed"))
-                    metrics.update(score=int(passed), score_max=1, checks={"tests_pass": passed}, repair=rr,
+                    metrics.update(score=int(passed), score_max=1, checks={"tests_pass": passed}, repair=rr, scoring_method="executable_tests",
                                    cell_status="valid_success" if passed else "valid_failure")
             elif ref.exists():
                 metrics.update(score(json.loads(ref.read_text()), metrics["final_text"]))
+                metrics["scoring_method"] = "rubric"
                 metrics["cell_status"] = "valid_success" if metrics["score_max"] > 0 and metrics["score"] == metrics["score_max"] else "valid_failure"
             else:
                 metrics["invalid_reason"] = f"no reference at {ref}"

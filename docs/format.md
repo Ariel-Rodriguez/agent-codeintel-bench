@@ -25,7 +25,13 @@ State in advance what would falsify H1.
 
 ## 2. Method
 
-- **Design:** baseline vs enhanced; the *only* difference is the tool.
+- **Design:** declare scientific (vanilla vs vanilla + candidate) and adoption
+  (frozen configured Pi vs configured Pi + candidate) pairs independently. Within
+  each pair the *only* difference is the candidate. Existing A/B/C ablations stay
+  separate contrasts. See [Dual-baseline workflow](dual-baseline.md).
+- **Personal baseline:** sanitized snapshot SHA-256, exact Pi/model/thinking,
+  ordered pinned extensions, tools, settings/env and configuration hashes;
+  document differences from vanilla. An unreproduced actual setup blocks adoption.
 - **Tasks:** the task families and what each requires.
 - **Ordering:** counterbalanced, sequential; number of trials per cell.
 - **Controls:** fixed prompt, fixed corpus commit, fixed model and thinking,
@@ -57,9 +63,13 @@ State in advance what would falsify H1.
 
 ## 4. Evidence
 
-Raw, uninterpreted results. One table per task family: baseline vs enhanced,
-score, tokens, wall time, tool calls, and — for the enhanced arm — the count of
-tool-specific calls. Link the machine-readable data.
+Raw, uninterpreted results. One table per task family and declared comparison:
+score and scoring method (rubric vs executable tests), input/output/total tokens,
+wall time, tool calls/use, and repeated retrieval where instrumentation supports
+it. Include every planned trial, missing/invalid cells, activation proof and
+captured resources for unsuccessful attempts. Link `comparisons.json` and raw
+machine-readable evidence. Unavailable metrics are not zero; no USD is inferred
+for unpriced/local models.
 
 ## 5. Analysis
 
@@ -78,8 +88,20 @@ else that could explain the result without the hypothesis being false.
 
 ## 7. Conclusion
 
-Accept or reject each hypothesis. State the adoption recommendation and the
-smallest next step. A missing prerequisite is `blocked`, never `concluded`.
+Accept or reject each hypothesis and provide **two independent verdicts**:
+
+- **Scientific:** does the candidate reproducibly benefit vanilla Pi?
+- **Adoption:** does it improve our actual frozen configured Pi enough to enable?
+
+Use **Adopt / Adopt selectively / Experimental / Reject / Insufficient evidence /
+Blocked or invalid experiment**. Automated positive screens remain Experimental;
+justify promotion with repeated practical benefits on relevant workloads, no
+observed correctness regression, and compatibility review. Mixed results remain
+workload-dependent. Equal ceiling scores do not establish correctness equivalence
+on harder tasks. Specify the smallest next step. Missing personal configuration
+may block adoption while leaving scientific evidence interpretable. Missing
+prerequisites never become measured success. Actual enabling requires a separate
+explicit owner decision; a report never modifies the daily-use environment.
 
 ## 8. Reproduction
 
@@ -101,11 +123,17 @@ non-sensitive ones; keep private ones referenced by hash):
   rules (no credentials, no `.git`, no hooks, no environments, no answers).
 - Prompts: sha256 of each prompt actually sent.
 - References: sha256 of each `reference.json`; they stay host-side.
-- Images: digest of the baseline and per-tool images; lockfiles used.
+- Images: digest of the baseline and per-tool images; lockfiles used. Explicit
+  dual-baseline pairs use the same preprovisioned image with candidate loading as
+  the treatment, not a second image change.
+- Plan: immutable expected trials/tasks, manifest identity, paired condition
+  inheritance, baseline snapshot hashes and task/verification asset hashes.
 - Isolation: proof that the agent container had no reference/answer mount, and
   network assertions (internal network, gateway allowlist, no external DNS/TCP).
-- Tool activation: per run, evidence the tool was **registered and called**, not
-  merely present. Report non-use runs instead of dropping them.
+- Tool activation: per run, evidence the tool was **registered and called** (or
+  its relevant hook/wrapper actually executed), with correct implementation,
+  revision, effective settings and no unexpected wrapper conflicts. Registration
+  alone is not execution. Report non-use/invalid runs instead of dropping them.
 - Failures: any cell that failed closed, with its exit code and stream status.
 - Adjudication: how each score was decided, including any manual override.
 

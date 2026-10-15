@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "status": "planned",
+  "practical_effect_threshold": 0.1,
+  "limits": {
+    "wall_seconds": 1200,
+    "output_bytes": 16777216
+  },
+  "baseline_differences": "Template: personal compaction setting is explicit; replace with the owner-reviewed actual sanitized setup. This is not adoption evidence. Both conditions in each pair use the same preprovisioned image; candidate loading is explicit only.",
+  "candidate": {
+    "extension": {
+      "entry": "/opt/tools/candidate/index.ts",
+      "revision": "0000000000000000000000000000000000000000",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "tools": [
+      "candidate_search"
+    ],
+    "env": {},
+    "guidance_files": [],
+    "activation": {
+      "id": "candidate.search",
+      "revision": "0000000000000000000000000000000000000000",
+      "registered_tools": [
+        "candidate_search"
+      ],
+      "executed_tools": [
+        "candidate_search"
+      ],
+      "hooks": [],
+      "settings": {},
+      "source_evidence": "REPLACE with pinned source locations and instrumentation patch SHA; template is not a compatibility probe"
+    }
+  },
+  "conditions": [
+    {
+      "id": "vanilla",
+      "image": "${DUAL_IMAGE}",
+      "snapshot": {
+        "sha256": "97e40fbc532ed5351d8a77142cc4f2c61c4ba5239cd848cf9adccf44010d3d62",
+        "data": {
+          "kind": "vanilla",
+          "pi_version": "1.2.0",
+          "model": {
+            "provider": "example",
+            "model": "local-model",
+            "thinking": "medium"
+          },
+          "tools": [
+            "read",
+            "bash",
+            "edit",
+            "write"
+          ],
+          "extensions": [],
+          "guidance_files": [],
+          "settings": {},
+          "env": {},
+          "activation": [],
+          "provenance": {
+            "actual_personal": false,
+            "reviewed": true,
+            "limitations": []
+          },
+          "model_config_sha256": null
+        }
+      }
+    },
+    {
+      "id": "vanilla_candidate",
+      "inherits": "vanilla"
+    },
+    {
+      "id": "personal",
+      "image": "${DUAL_IMAGE}",
+      "snapshot": {
+        "sha256": "6299cb71d2860fde9ab73872a8558a47d2cd12ab8a4fd5458e51334eaaece712",
+        "data": {
+          "kind": "personal",
+          "pi_version": "1.2.0",
+          "model": {
+            "provider": "example",
+            "model": "local-model",
+            "thinking": "medium"
+          },
+          "tools": [
+            "read",
+            "bash",
+            "edit",
+            "write"
+          ],
+          "extensions": [],
+          "guidance_files": [],
+          "settings": {
+            "compaction": {
+              "enabled": true
+            }
+          },
+          "env": {},
+          "activation": [],
+          "provenance": {
+            "actual_personal": false,
+            "reviewed": false,
+            "limitations": [
+              "Template only: no actual personal configuration has been supplied or reproduced"
+            ]
+          },
+          "model_config_sha256": null
+        }
+      }
+    },
+    {
+      "id": "personal_candidate",
+      "inherits": "personal"
+    }
+  ],
+  "comparisons": [
+    {
+      "id": "scientific",
+      "baseline": "vanilla",
+      "candidate": "vanilla_candidate"
+    },
+    {
+      "id": "adoption",
+      "baseline": "personal",
+      "candidate": "personal_candidate"
+    }
+  ]
+}
