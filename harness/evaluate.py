@@ -331,10 +331,12 @@ def recovery_metrics(calls: list[dict], *, spec: dict, audit: list[dict] | None)
                             break
     episodes = []
     by_id = {c["toolCallId"]: c for c in calls}
+    audited_calls = set()
     for record in audit or []:
         omitted = by_id.get(record.get("toolCallId"))
         if not omitted or record.get("phase") != "complete" or not isinstance(record.get("pre_text"), str) or not isinstance(record.get("post_text"), str):
             continue
+        audited_calls.add(omitted["toolCallId"])
         for diagnostic in spec.get("diagnostics", []):
             needle = diagnostic["text"]
             if needle not in record["pre_text"] or needle in record["post_text"] or needle in omitted["text"]:
@@ -352,14 +354,18 @@ def recovery_metrics(calls: list[dict], *, spec: dict, audit: list[dict] | None)
             "post_truncation_repeat_read_calls": len(repeat_reads),
             "post_truncation_links": links,
             "diagnostic_recovery_turns": [e["turns"] for e in episodes if not e["right_censored"]],
-            "diagnostic_unrecovered_count": sum(e["right_censored"] for e in episodes) if audit is not None else None,
-            "diagnostic_episodes": episodes, "diagnostic_evidence_available": audit is not None}
+            "diagnostic_unrecovered_count": sum(e["right_censored"] for e in episodes)
+                if audited_calls and spec.get("diagnostics") else None,
+            "diagnostic_episodes": episodes, "diagnostic_audited_calls": len(audited_calls),
+            "diagnostic_evidence_available": bool(audited_calls and spec.get("diagnostics"))}
 
 
 def verify_activation(calls: list[dict], *, condition: dict, audit: list[dict] | None) -> dict:
     """Implementation identity comes only from a joined entry/completion audit pair."""
     counts, tools, verified = {}, {}, []
     for c in calls:
+        if not c.get("has_start") and not c["completed"]:
+            continue
         records = [r for r in audit or [] if r.get("toolCallId") == c["toolCallId"] and r.get("tool") == c["name"]]
         complete = next((r for r in records if r.get("phase") == "complete" and
                          r.get("implementation_id") and r.get("revision") and isinstance(r.get("success"), bool) and
@@ -385,7 +391,8 @@ def verify_activation(calls: list[dict], *, condition: dict, audit: list[dict] |
             "wrapper_execution_by_tool": tools if audit is not None else None,
             "wrapper_verified_call_ids": verified, "activation_status": status,
             "activation_missing_tools": missing, "activation_revision_mismatch": revision_mismatch,
-            "code_search_calls": sum(c["name"] == "code_search" for c in calls),
+            "code_search_calls": sum(c["name"] == "code_search" and (bool(c.get("has_start")) or c["completed"]) for c in calls),
+            "code_search_requested_calls": sum(c["name"] == "code_search" for c in calls),
             "code_search_wrapper_executions": tools.get("code_search", 0) if audit is not None else None}
 
 
@@ -424,8 +431,10 @@ def parse_run(directory: pathlib.Path, *, spec: dict | None = None,
         if text:
             metrics["final_text"] = text
     metrics["pricing_complete"] = metrics["responses"] > 0 and metrics["responses"] == metrics["priced_responses"]
-    metrics["tool_calls_total"] = len(calls)
-    metrics["tool_calls_by_name"] = {n: sum(c["name"] == n for c in calls) for n in sorted({c["name"] for c in calls})}
+    executed = [c for c in calls if c.get("has_start") or c["completed"]]
+    metrics["tool_calls_requested"] = len(calls)
+    metrics["tool_calls_total"] = len(executed)
+    metrics["tool_calls_by_name"] = {n: sum(c["name"] == n for c in executed) for n in sorted({c["name"] for c in executed})}
     metrics["tool_duration_ms"] = sum(c["durationMs"] or 0 for c in calls)
     audit_path = directory / "wrapper_audit.jsonl"
     audit = load_events(audit_path) if audit_path.exists() else None
@@ -436,6 +445,11 @@ def parse_run(directory: pathlib.Path, *, spec: dict | None = None,
     if (condition or {}).get("expected_activation", {}).get("wrapper_tools"):
         from verify_wrappers import check_capture
         metrics["wrapper_proof"] = check_capture(directory, condition)
+        metrics.update(metrics["wrapper_proof"]["execution"])
+        verified_ids = set(metrics["wrapper_verified_call_ids"])
+        for c in calls:
+            if c["toolCallId"] not in verified_ids:
+                c.pop("wrapper_implementation", None)
         if metrics["wrapper_proof"]["status"] != "verified":
             metrics["activation_status"] = "unknown" if audit is None else "contradicted"
     metrics["trace_schema_validation"] = spec.get("trace_schema_validation", "BLOCKED: no pinned-container trace supplied")

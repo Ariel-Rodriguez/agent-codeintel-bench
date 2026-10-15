@@ -11,7 +11,9 @@ Calls join on `toolCallId`; completed `toolResult` text wins over execution-end
 text. Only text blocks count (UTF-8 bytes). Turns count completed assistant
 messages. `tool_metrics.jsonl` retains arguments, order, source, sizes,
 repetition/mutation labels and explicit truncation evidence, not duplicate output.
-Raw traces remain the source of output text. Repetitions use successful calls;
+Raw traces remain the source of output text. `tool_calls_total` counts starts or
+completed fallback calls, not unexecuted assistant requests; requests are retained
+separately in `tool_calls_requested`. Repetitions use successful calls;
 response size counts delivered errors too. Overlap is requested, bounded lines,
 not returned lines; omitted limits remain a separate DEFAULT range. Concurrent
 or unclassified shell activity yields mutation-unknown, not no-mutation.
@@ -31,7 +33,8 @@ Five-turn post-truncation links are associations, not causal recovery claims;
 test reruns are counted separately, not classified as retrieval recovery.
 Diagnostic episodes require captured `pre_text` and `post_text` in completion
 audit records and actual absence in delivered text. Unrecovered episodes remain
-right-censored; without audit evidence their count is null, not zero.
+right-censored; without captured pre/post audit evidence and diagnostic definitions
+their count is null, not zero. `diagnostic_audited_calls` exposes evidence coverage.
 
 Wrapper identity requires sidecar `wrapper_audit.jsonl` enter AND complete
 records joined to a real call ID/tool with matching `implementation_id` and

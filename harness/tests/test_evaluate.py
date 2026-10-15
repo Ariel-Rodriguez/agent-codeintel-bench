@@ -130,7 +130,12 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(m["diagnostic_recovery_turns"], [1])
         self.assertEqual(m["diagnostic_unrecovered_count"], 1)
         self.assertTrue(m["diagnostic_episodes"][1]["right_censored"])
-        self.assertEqual(ev.recovery_metrics(c, spec=spec, audit=[])["diagnostic_episodes"], [])
+        missing = ev.recovery_metrics(c, spec=spec, audit=[])
+        self.assertEqual(missing["diagnostic_episodes"], [])
+        self.assertIsNone(missing["diagnostic_unrecovered_count"])
+        self.assertFalse(missing["diagnostic_evidence_available"])
+        missing = ev.recovery_metrics(c, spec=spec, audit=[{"phase": "complete", "toolCallId": "1"}])
+        self.assertIsNone(missing["diagnostic_unrecovered_count"])
 
     def test_identity_not_tool_name_and_search_separate(self):
         c = calls(tool("1"), tool("2", "code_search"))
@@ -155,6 +160,18 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(m["tool_response_tokens_est_distribution"]["p95"], 3)
         with self.assertRaises(ValueError):
             ev.response_metrics(c, tokenizer=object())
+
+    def test_unexecuted_request_is_not_an_executed_tool_call(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = pathlib.Path(tmp)
+            event = assistant([{"type": "toolCall", "id": "pending", "name": "code_search", "arguments": {"query": "x"}}])
+            (directory / "stdout.jsonl").write_text(json.dumps(event))
+            m = ev.parse_run(directory)
+            self.assertEqual(m["tool_calls_requested"], 1)
+            self.assertEqual(m["tool_calls_total"], 0)
+            self.assertEqual(m["code_search_calls"], 0)
+            self.assertEqual(m["code_search_requested_calls"], 1)
+            self.assertEqual(len(ev.load_events(directory / "tool_metrics.jsonl")), 1)
 
     def test_usage_and_per_call_artifact(self):
         with tempfile.TemporaryDirectory() as tmp:
