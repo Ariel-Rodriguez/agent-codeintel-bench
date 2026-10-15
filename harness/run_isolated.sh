@@ -52,12 +52,17 @@ run_one() {
   local arm="$1" task="$2" image="$3" label="$4"
   local prompt="$TASKS/$task/prompt.md"
   [ -f "$prompt" ] || { echo "error: missing prompt $prompt" >&2; exit 2; }
-  local volumes=(-v "$CORPUS:/corpus:ro" -v "$prompt:/task/prompt.md:ro" -v "$OUT:/out")
-  [ -f "$TASKS/$task/fixture.patch" ] && volumes+=(-v "$TASKS/$task/fixture.patch:/task/fixture.patch:ro")
 
   echo ">>> $label $arm/$task (image=$image) $(date +%T)"
+  # Mount ONLY this cell's output directory: never expose prior runs, sibling
+  # cells, or scored artifacts to the agent container.
+  local cell="$OUT/$label/$arm/$task"
+  mkdir -p "$cell"
+  chmod 777 "$cell" 2>/dev/null || true
+  local volumes=(-v "$CORPUS:/corpus:ro" -v "$prompt:/task/prompt.md:ro" -v "$cell:/out")
+  [ -f "$TASKS/$task/fixture.patch" ] && volumes+=(-v "$TASKS/$task/fixture.patch:/task/fixture.patch:ro")
   BENCH_IMAGE="$image" compose run --rm \
-    -e ARM="$arm" -e TASK="$task" -e RUN_ID="$label" \
+    -e ARM="$arm" -e TASK="$task" \
     -e BASELINE_TOOLS -e ENHANCED_TOOLS -e CODEINTEL_EXT -e TOOL_ENTRY \
     -e PI_PROVIDER -e PI_MODEL -e PI_THINKING \
     "${volumes[@]}" bench run-one
@@ -92,6 +97,7 @@ for t in range(1, trials + 1):
                 row["trial"] = t
                 rows.append(row)
 dest = out / run_id
+dest.mkdir(parents=True, exist_ok=True)
 (dest / "summary.jsonl").write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in rows))
 print(f"combined {len(rows)} cells into {dest}/summary.jsonl")
 PY

@@ -84,7 +84,7 @@ run_one() {
   fi
 
   local cfg; cfg="$(setup_agent_dir)"
-  local out="/out/$RUN_ID/$arm/$task"
+  local out="/out"
   mkdir -p "$out"
   cp "$prompt" "$out/prompt.txt"
   shasum -a 256 "$prompt" | awk '{print $1}' > "$out/prompt.sha256"
@@ -128,7 +128,8 @@ run_one() {
   ( cd "$scratch" \
       && git status --porcelain > "$out/status_after.txt" \
       && git diff > "$out/final.patch" \
-      && git ls-files --others --exclude-standard > "$out/untracked_files.txt" )
+      && git ls-files --others --exclude-standard > "$out/untracked_files.txt" \
+      && { git ls-files --others --exclude-standard -z | tar --null -czf "$out/untracked.tgz" -T - 2>/dev/null || true; } )
 
   # Fail closed: no stream or a non-zero exit is a failure, not a result.
   [ -s "$out/stdout.jsonl" ] || die "empty event stream for $arm/$task (rc=$rc)"

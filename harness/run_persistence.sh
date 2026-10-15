@@ -43,8 +43,10 @@ stage() { # arm, output-name, prompt-file
   local arm="$1" name="$2" prompt="$3"
   [ -f "$prompt" ] || { echo "error: missing prompt $prompt" >&2; exit 2; }
   local image="$BASE_IMAGE"; [ "$arm" = "enhanced" ] && image="$ENHANCED_IMAGE"
+  local cell="$OUT/$RUN_ID/$arm/$name"
+  mkdir -p "$cell"; chmod 777 "$cell" 2>/dev/null || true
   local volumes=(-v "$CORPUS:/corpus:ro" -v "$prompt:/task/prompt.md:ro"
-                 -v "$OUT:/out" -v "$STATE:/persist")
+                 -v "$cell:/out" -v "$STATE:/persist")
   echo ">>> $RUN_ID $arm $name (image=$image) $(date +%T)"
   BENCH_IMAGE="$image" compose run --rm \
     -e ARM="$arm" -e TASK="$name" -e RUN_ID="$RUN_ID" -e PERSIST_DIR=/persist \
