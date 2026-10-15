@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "widget-service"
+version = "0.1.0"
+description = "Neutral fixture used by the agent code-intelligence benchmark."
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8.4.0"]
+
+[tool.setuptools]
+packages = ["widgets", "service"]
+
+[tool.setuptools.package-dir]
+widgets = "src/widgets"
+service = "src/service"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]

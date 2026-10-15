@@ -1,0 +1,27 @@
+# credentials and local state — never commit
+configs/*/pi-agent/auth.json
+configs/*/pi-agent/models-store.json
+configs/*/sessions/
+configs/
+
+# working copies and raw results are generated
+work/
+results/
+vendor/
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# code-index state
+.codeindex/
+*.db
+*.db-shm
+*.db-wal
+
+# os / editor
+.DS_Store
+*.swp

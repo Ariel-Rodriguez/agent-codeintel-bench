@@ -1,0 +1,35 @@
+{
+  "id": "navigation",
+  "title": "Locate widget_status and its consumers",
+  "scoring": {
+    "definition_file": {
+      "any_of": ["src/widgets/__init__.py"],
+      "weight": 1
+    },
+    "symbol": {
+      "any_of": ["widget_status"],
+      "weight": 1
+    },
+    "caller_files": {
+      "all_of": [
+        "src/service/routes.py",
+        "src/service/cli.py"
+      ],
+      "weight": 2
+    },
+    "test_file": {
+      "any_of": ["tests/test_surface.py"],
+      "weight": 1
+    },
+    "execution_flag": {
+      "any_of": ["live_execution", "certified"],
+      "weight": 1
+    },
+    "reason_code": {
+      "any_of": ["widget-not-qualified"],
+      "weight": 1
+    }
+  },
+  "reference": "Defined in src/widgets/__init__.py. Called from src/service/routes.py and src/service/cli.py; referenced by tests/test_surface.py. Implemented flags are true while certified and live_execution are false; reason_code is widget-not-qualified.",
+  "established_by": "grep -rn 'widget_status' --include=*.py . on fixtures/widget-service"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "repair",
+  "title": "Repair the is_observation_fresh regression",
+  "fixture": "Apply benchmarks/repair/bug.patch identically to both arms before the task.",
+  "reference": "The regression removes the finite-number / non-negative-staleness guard and the `open is True` requirement from is_observation_fresh. The correct minimal repair restores them. Passing evidence: tests/test_freshness.py::test_malformed_observations_never_authorize passes.",
+  "scoring": {
+    "correct_file": {
+      "any_of": ["src/widgets/freshness.py"],
+      "weight": 1
+    },
+    "correct_function": {
+      "any_of": ["is_observation_fresh"],
+      "weight": 1
+    },
+    "tests_pass": {
+      "any_of": ["passed"],
+      "weight": 2
+    }
+  }
+}

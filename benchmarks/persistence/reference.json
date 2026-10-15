@@ -1,0 +1,20 @@
+{
+  "id": "persistence_stage2",
+  "title": "Cross-session reuse of repository understanding",
+  "scoring": {
+    "transaction_module": {
+      "any_of": ["src/widgets/guarded_transaction.py"],
+      "weight": 1
+    },
+    "journal_module": {
+      "any_of": ["src/widgets/operation_log.py"],
+      "weight": 1
+    },
+    "broker_module": {
+      "any_of": ["src/widgets/secret_access.py"],
+      "weight": 1
+    }
+  },
+  "reference": "GuardedTransaction -> src/widgets/guarded_transaction.py; durable operation journal -> src/widgets/operation_log.py; supervisor-only value resolution -> src/widgets/secret_access.py (SupervisorBroker).",
+  "notes": "Stage 2 must open a new session (not a continuation) so chat history is not the persistence mechanism. Only the enhanced arm is expected to keep on-disk index state across sessions. Run stage 2 both with and without removing agent-authored notes to isolate index state."
+}

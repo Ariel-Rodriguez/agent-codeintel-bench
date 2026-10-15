@@ -1,0 +1,32 @@
+{
+  "id": "impact",
+  "title": "Rename WidgetAccessRefusal and find affected files",
+  "scoring": {
+    "definition_file": {
+      "any_of": ["src/widgets/secret_access.py"],
+      "weight": 1
+    },
+    "export_file": {
+      "any_of": ["src/widgets/__init__.py"],
+      "weight": 1
+    },
+    "test_files": {
+      "all_of": [
+        "tests/test_secret_access.py",
+        "tests/test_surface.py"
+      ],
+      "weight": 2
+    },
+    "no_outside": {
+      "any_of": [
+        "none",
+        "no python file outside",
+        "outside the widgets package",
+        "outside widgets"
+      ],
+      "weight": 1
+    }
+  },
+  "reference": "Definition: src/widgets/secret_access.py. Export: src/widgets/__init__.py. Tests: tests/test_secret_access.py and tests/test_surface.py. No Python file outside the widgets package refers to it.",
+  "established_by": "grep -rln 'WidgetAccessRefusal' --include=*.py . on fixtures/widget-service"
+}
