@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+# Enforce commit message policy: "Fix|Add|Chore <desc>", no co-author/generated lines.
+msg_file="$1"
+first="$(head -n 1 "$msg_file")"
+
+case "$first" in
+  "Fix "*|"Add "*|"Chore "*) ;;
+  *)
+    echo "commit-msg: first line must start with 'Fix ', 'Add ' or 'Chore '" >&2
+    echo "commit-msg: got: $first" >&2
+    exit 1
+    ;;
+esac
+
+if printf '%s' "$first" | grep -q '\.$'; then
+  echo "commit-msg: remove the trailing period" >&2
+  exit 1
+fi
+
+if [ "${#first}" -gt 72 ]; then
+  echo "commit-msg: first line is ${#first} chars (max 72)" >&2
+  exit 1
+fi
+
+if grep -qiE 'co-authored-by|generated with|co-authored|signed-off-by' "$msg_file"; then
+  echo "commit-msg: remove co-author / generated trailers" >&2
+  exit 1
+fi
+
+exit 0

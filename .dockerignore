@@ -1,0 +1,15 @@
+# Build context excludes everything generated or secret.
+.git
+.githooks
+.github
+docker
+inputs
+out
+work
+results
+configs
+**/__pycache__
+**/*.egg-info
+**/.venv
+**/.codeindex
+**/*.db

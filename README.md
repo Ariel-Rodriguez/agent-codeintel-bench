@@ -34,6 +34,26 @@ work/                        the two working copies the agents actually edit
 
 ## Quickstart
 
+### Isolated (recommended)
+
+Because a code-intelligence extension runs inside the Pi process, treat it as
+untrusted. Run it in the container, which exposes only `inputs/` (read-only) and
+`out/`:
+
+```bash
+mkdir -p inputs
+cp /path/to/repo.zip inputs/repo.zip     # the repository to test
+cp -R /path/to/tool    inputs/tool        # the extension/tool to test
+
+docker/run.sh build
+docker/run.sh run      # prepare + run + write results to out/
+docker/run.sh down     # tear down (containers and volumes)
+```
+
+See [`docker/README.md`](docker/README.md) for credentials and network options.
+
+### Local
+
 ```bash
 # 0. prerequisites: pi on PATH, python3, git; network for the first pip install
 git clone <this repo> && cd agent-codeintel-bench
@@ -80,6 +100,32 @@ harness/run_condition.sh enhanced run1 persistence_stage1 benchmarks/persistence
 harness/run_condition.sh baseline run1 persistence_stage2 benchmarks/persistence/stage2.md
 harness/run_condition.sh enhanced run1 persistence_stage2 benchmarks/persistence/stage2.md
 ```
+
+### Let an agent do it
+
+[`PROMPT.md`](PROMPT.md) is a bootstrap prompt: point a Pi agent at it and the
+agent reads the repo, inspects `inputs/`, sets up baseline vs experiment with
+`harness/setup_test.sh`, runs the suite, and reports. In the container:
+
+```bash
+docker/run.sh agent
+```
+
+### Setup only (bring your own repo and tool)
+
+```bash
+harness/setup_test.sh --repo inputs/repo.zip --tool inputs/tool \
+  --tool-tools 'read,bash,edit,write,codeindex_*'
+source work/experiment.env
+harness/run_suite.sh run1 && harness/evaluate.py run1
+```
+
+## Claiming a test
+
+Before running, reserve the `(tool × task family × repo × model)` cell by
+opening a **Claim a test** issue. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
+commit-message policy (`Fix` / `Add` / `Chore`, no co-author trailers) and the
+claim process.
 
 ## Verifying the tool was actually used
 

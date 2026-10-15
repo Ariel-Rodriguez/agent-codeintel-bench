@@ -7,7 +7,13 @@ configs/
 # working copies and raw results are generated
 work/
 results/
+out/
 vendor/
+
+# inputs are drop-in, never committed
+inputs/*
+!inputs/README.md
+.no-auth/
 
 # python
 .venv/
