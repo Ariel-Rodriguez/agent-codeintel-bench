@@ -508,11 +508,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"no results at {run_dir}")
     conditions = json.loads(args.conditions.read_text())["conditions"] if args.conditions else [
         {"id": p.name} for p in sorted(run_dir.iterdir()) if p.is_dir()]
-    rows = []
+    rows, missing_conditions = [], []
     for condition in conditions:
         arm = condition["id"]
         arm_dir = run_dir / arm
         if not arm_dir.is_dir():
+            missing_conditions.append(arm)
             continue
         for directory in sorted(p for p in arm_dir.iterdir() if p.is_dir()):
             task = directory.name
@@ -574,7 +575,11 @@ def main(argv: list[str] | None = None) -> int:
     write_csv(run_dir / "summary.csv", rows)
     invalid = sum(r["cell_status"] in ("infra_invalid", "blocked") for r in rows)
     print(f"evaluated {len(rows)} cells ({invalid} invalid/blocked); retained all resource accounting")
-    return 1 if invalid else 0
+    if missing_conditions:
+        print("FAILED CLOSED: missing declared conditions: " + ", ".join(missing_conditions), file=sys.stderr)
+    if not rows:
+        print("FAILED CLOSED: no captured cells", file=sys.stderr)
+    return 1 if invalid or missing_conditions or not rows else 0
 
 
 if __name__ == "__main__":

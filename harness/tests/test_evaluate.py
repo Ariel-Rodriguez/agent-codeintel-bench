@@ -187,6 +187,16 @@ class EvaluationTests(unittest.TestCase):
             self.assertEqual(evidence[0]["tool_response_text_bytes"], 2)
             self.assertNotIn("text", evidence[0])
 
+    def test_empty_or_missing_declared_conditions_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / "run").mkdir()
+            arguments = ["--results", tmp, "--references", tmp, "--label", "run"]
+            self.assertEqual(ev.main(arguments), 1)
+            manifest = root / "conditions.json"
+            manifest.write_text(json.dumps({"conditions": [{"id": "absent"}]}))
+            self.assertEqual(ev.main(arguments + ["--conditions", str(manifest)]), 1)
+
     def test_garbage_trace_cannot_be_a_scored_success(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
