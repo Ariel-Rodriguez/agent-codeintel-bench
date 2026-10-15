@@ -24,7 +24,7 @@ which do not exercise what the tool claims to save. The vendor's own benchmark i
 
 - **Task:** a real regression in the corpus (a freshness guard removed by a
   prepared fixture). The prompt describes the **symptom** ("a malformed
-  observation is authorized; a test in `…/test_privacy.py` fails") without
+  observation is authorized; a test in the suite fails") without
   naming the function or the fix.
 - **Arms:** baseline `read,bash,edit,write`; enhanced the same plus agent-kernel
   (with the vendor's own guidance). 3 counterbalanced trials.

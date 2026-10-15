@@ -25,12 +25,12 @@ repair task:
 
 - **Bug:** a fail-closed guard was removed from a readiness classifier, so an
   unattested fact could be treated as ready.
-- **Prompt (symptom-described):** "the automator's protected credential flow can
+- **Prompt (symptom-described):** "a protected credential flow can
   authorize a physical action when one of its readiness facts was never
   attested" — the module and function are **not** named, so the agent must locate
   the cause.
-- **Hidden verification:** `components/automator/tests/test_credential_transaction.py`
-  must pass (the fixture fails exactly one test); test changes are rejected.
+- **Hidden verification:** the module's test suite must pass (the fixture
+  fails exactly one test); test changes are rejected.
 
 3 counterbalanced trials; executable scoring as in report 0003.
 
