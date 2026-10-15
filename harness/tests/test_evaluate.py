@@ -40,6 +40,28 @@ class EvaluationTests(unittest.TestCase):
         fallback = ev.normalize_tool_calls([events[0], events[2]])
         self.assertEqual(fallback[0]["args"]["path"], "fallback")
 
+    def test_model_result_turn_wins_over_late_execution_end(self):
+        events = [assistant(), tool("1")[0], {"type": "message_end", "message": {
+            "role": "toolResult", "toolCallId": "1", "content": [{"type": "text", "text": "visible"}]}},
+            assistant(), tool("1", text="fallback")[1]]
+        c = ev.normalize_tool_calls(events)[0]
+        self.assertEqual(c["turn"], 1)
+        self.assertEqual(c["text"], "visible")
+
+    def test_same_assistant_batch_is_not_post_truncation_recovery(self):
+        events = [assistant()] + tool("1", args={"path": "a"}, details={"truncated": True}) + tool("2", args={"path": "a"})
+        c = ev.normalize_tool_calls(events)
+        self.assertEqual(ev.recovery_metrics(c, spec={}, audit=None)["post_truncation_retrieval_calls"], 0)
+
+    def test_diagnostic_first_delivery_not_call_start_order(self):
+        events = [assistant()] + tool("omitted", text="summary") + [assistant()]
+        events += [tool("slow")[0], tool("fast")[0], tool("fast", text="DIAG")[1], assistant(), tool("slow", text="DIAG")[1]]
+        c = ev.normalize_tool_calls(events)
+        audit = [{"toolCallId": "omitted", "phase": "complete", "pre_text": "DIAG", "post_text": "summary"}]
+        m = ev.recovery_metrics(c, spec={"diagnostics": [{"id": "d", "text": "DIAG"}]}, audit=audit)
+        self.assertEqual(m["diagnostic_episodes"][0]["recovered_call_id"], "fast")
+        self.assertEqual(m["diagnostic_recovery_turns"], [1])
+
     def test_ranges_union_default_and_success(self):
         c = calls(tool("1", args={"path": "./a", "limit": 10}),
                   tool("2", args={"path": "/workspace/a", "offset": 6, "limit": 10}),
@@ -147,6 +169,22 @@ class EvaluationTests(unittest.TestCase):
             evidence = ev.load_events(directory / "tool_metrics.jsonl")
             self.assertEqual(evidence[0]["tool_response_text_bytes"], 2)
             self.assertNotIn("text", evidence[0])
+
+    def test_garbage_trace_cannot_be_a_scored_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            cell = root / "run/custom/task"
+            cell.mkdir(parents=True)
+            ref = root / "refs/task"
+            ref.mkdir(parents=True)
+            (ref / "reference.json").write_text(json.dumps({"scoring": {"absence": {"none_of": ["wrong"]}}}))
+            (cell / "stdout.jsonl").write_text("garbage\n")
+            (cell / "exit_code").write_text("0")
+            (cell / "wall_seconds").write_text("garbage")
+            self.assertEqual(ev.main(["--results", tmp, "--references", str(root / "refs"), "--label", "run"]), 1)
+            row = json.loads((cell / "metrics.json").read_text())
+            self.assertEqual(row["cell_status"], "infra_invalid")
+            self.assertIn("no completed", row["invalid_reason"])
 
     def test_manifest_discovery_retains_invalid_cost_and_timeout(self):
         with tempfile.TemporaryDirectory() as tmp:

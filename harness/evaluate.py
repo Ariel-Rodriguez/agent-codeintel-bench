@@ -46,7 +46,7 @@ def normalize_tool_calls(events: list[dict]) -> list[dict]:
     def get(call_id, index):
         if call_id not in calls:
             calls[call_id] = {"toolCallId": call_id, "name": "?", "args": {},
-                              "start_index": index, "turn": turn, "completed": False,
+                              "start_index": index, "start_turn": turn, "turn": turn, "completed": False,
                               "isError": None, "durationMs": None}
         return calls[call_id]
 
@@ -66,18 +66,18 @@ def normalize_tool_calls(events: list[dict]) -> list[dict]:
             call = get(event["toolCallId"], index)
             if kind == "tool_execution_start":
                 call.update(name=event.get("toolName", call["name"]), has_start=True,
-                            start_index=index)
+                            start_index=index, start_turn=turn)
                 if "args" in event:
                     call.update(args=event["args"] or {}, argument_source="tool_execution_start")
             else:
                 result = event.get("result") or {}
-                call.update(completed=True, end_index=index, turn=turn,
+                call.update(completed=True, end_index=index, end_turn=turn,
                             isError=event.get("isError", False), result=result,
                             durationMs=event.get("durationMs"))
         elif kind == "message_end" and message.get("role") == "toolResult" and message.get("toolCallId"):
             call = get(message["toolCallId"], index)
             call.update(model_content=message.get("content") or [], model_index=index,
-                        turn=turn, completed=True,
+                        model_turn=turn, completed=True,
                         isError=message.get("isError", call["isError"]))
             if call["isError"] is None:
                 call["isError"] = False
@@ -88,6 +88,7 @@ def normalize_tool_calls(events: list[dict]) -> list[dict]:
         call["text_source"] = ("toolResult" if "model_content" in call else
                                "execution_end" if "result" in call else None)
         call["text"] = text_content(call.get("model_content", result.get("content")))
+        call["turn"] = call.get("model_turn", call.get("end_turn", call["turn"]))
         if not isinstance(call["args"], dict):
             call["args"] = {}
     return sorted(calls.values(), key=lambda c: c["start_index"])
@@ -142,14 +143,14 @@ def mutation_between(calls, earlier, later):
             if kind == "mutation" and c["isError"] is False:
                 return "intervening_mutation"
             unknown |= kind == "unknown" or c["isError"] is not False
-        elif c["name"] not in ("read", "code_search", "edit", "write"):
+        elif c["name"] not in ("read", "code_search"):
             unknown = True
     return "unknown" if unknown else "no_intervening_mutation"
 
 
 def read_range(call):
     args = call["args"]
-    start, limit = args.get("offset", 1), args.get("limit")
+    start, limit = args.get("offset") or 1, args.get("limit")
     if type(start) is int and type(limit) is int and start >= 1 and limit > 0:
         return start, start + limit  # half-open requested interval
     return None
@@ -193,7 +194,7 @@ def retrieval_metrics(calls: list[dict], *, spec: dict) -> dict:
             metrics["successful_read_calls"] += 1
             call["normalized_path"] = path
             repeat(names[0], paths, path, call)
-            key = (path, json.dumps(call["args"].get("offset", 1), sort_keys=True),
+            key = (path, json.dumps(call["args"].get("offset") or 1, sort_keys=True),
                    json.dumps(call["args"].get("limit", "DEFAULT"), sort_keys=True))
             repeat(names[1], ranges, key, call)
             interval = read_range(call)
@@ -307,7 +308,7 @@ def recovery_metrics(calls: list[dict], *, spec: dict, audit: list[dict] | None)
         for later in calls[i + 1:]:
             if later["start_index"] <= c.get("model_index", c.get("end_index", c["start_index"])):
                 continue
-            if not 0 <= later["turn"] - c["turn"] <= 5:
+            if not 1 <= later["start_turn"] - c["turn"] <= 5:
                 continue
             reason = retrieval_match(c, later, spec)
             if reason:
@@ -315,9 +316,19 @@ def recovery_metrics(calls: list[dict], *, spec: dict, audit: list[dict] | None)
                 links.append({"from": c["toolCallId"], "to": later["toolCallId"], "reason": reason})
                 # Require an earlier repeated/overlapping read, not merely same-file association.
                 if later["name"] == "read":
-                    a, b = read_range(c), read_range(later)
-                    if (a and b and overlap_size(b, [a])) or c["args"] == later["args"]:
-                        repeat_reads.add(later["toolCallId"])
+                    for prior in calls:
+                        if prior["start_index"] >= later["start_index"]:
+                            break
+                        if prior["name"] != "read" or prior["isError"] is not False:
+                            continue
+                        if normalized_path(prior["args"].get("path"), spec) != normalized_path(later["args"].get("path"), spec):
+                            continue
+                        a, b = read_range(prior), read_range(later)
+                        same_range = ((prior["args"].get("offset") or 1) == (later["args"].get("offset") or 1) and
+                                      prior["args"].get("limit", "DEFAULT") == later["args"].get("limit", "DEFAULT"))
+                        if same_range or (a and b and overlap_size(b, [a])):
+                            repeat_reads.add(later["toolCallId"])
+                            break
     episodes = []
     by_id = {c["toolCallId"]: c for c in calls}
     for record in audit or []:
@@ -328,7 +339,8 @@ def recovery_metrics(calls: list[dict], *, spec: dict, audit: list[dict] | None)
             needle = diagnostic["text"]
             if needle not in record["pre_text"] or needle in record["post_text"] or needle in omitted["text"]:
                 continue
-            recovered = next((c for c in calls if c.get("model_index", c.get("end_index", -1)) >
+            ordered = sorted(calls, key=lambda c: c.get("model_index", c.get("end_index", -1)))
+            recovered = next((c for c in ordered if c.get("model_index", c.get("end_index", -1)) >
                               omitted.get("model_index", omitted.get("end_index", -1)) and needle in c["text"]), None)
             episodes.append({"diagnostic": diagnostic["id"], "omitted_call_id": omitted["toolCallId"],
                              "recovered_call_id": recovered["toolCallId"] if recovered else None,
@@ -501,25 +513,33 @@ def main(argv: list[str] | None = None) -> int:
                 exit_code = None
             metrics["exit_code"] = exit_code
             wall = directory / "wall_seconds"
-            metrics["wall_seconds"] = float(wall.read_text().strip()) if wall.exists() else None
+            try:
+                metrics["wall_seconds"] = float(wall.read_text().strip()) if wall.exists() else None
+            except ValueError:
+                metrics["wall_seconds"] = None
             termination = directory / "termination.json"
             term = json.loads(termination.read_text()) if termination.exists() else {}
             metrics["termination"] = term
             stream = directory / "stdout.jsonl"
             ref = reference_for(args.references, task)
             repair = directory / "repair_result.json"
-            if (directory / "blocked.json").exists():
+            if condition.get("blocked_reason"):
+                metrics["cell_status"] = "blocked"
+                metrics["invalid_reason"] = condition["blocked_reason"]
+            elif (directory / "blocked.json").exists():
                 metrics["cell_status"] = "blocked"
                 metrics["invalid_reason"] = json.loads((directory / "blocked.json").read_text()).get("reason")
             elif (directory / "container_failure.json").exists():
                 metrics["invalid_reason"] = "container orchestration failed (see container_failure.json)"
             elif not stream.exists() or not stream.stat().st_size:
                 metrics["invalid_reason"] = "missing or empty stdout.jsonl"
+            elif metrics["responses"] == 0:
+                metrics["invalid_reason"] = "no completed assistant messages in stream"
             elif condition.get("expected_activation", {}).get("wrapper_tools") and metrics["activation_status"] != "verified":
                 metrics["invalid_reason"] = "wrapper execution not verified"
             elif term.get("reason") in ("wall_limit", "output_limit"):
                 metrics.update(cell_status="valid_failure", score=0, score_max=1, checks={"limit": False})
-            elif exit_code != 0 or metrics["error_messages"]:
+            elif exit_code != 0 or metrics["error_messages"] or any(r in ("error", "aborted") for r in metrics["stop_reasons"]):
                 metrics["invalid_reason"] = f"execution error: exit={exit_code}, errors={metrics['error_messages']}"
             elif repair.exists():
                 rr = json.loads(repair.read_text())

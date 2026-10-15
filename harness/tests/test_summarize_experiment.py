@@ -43,6 +43,14 @@ class SummaryTests(unittest.TestCase):
         self.assertIn("inconclusive", result["decision"])
         self.assertEqual(len(result["cells"]), 4)
 
+    def test_pairing_without_explicit_trial_defaults_to_zero(self):
+        rows = [row(), row("kernel_full")]
+        for r in rows:
+            del r["trial"]
+        pair = se.summarize(rows)["paired_differences"][0]
+        self.assertEqual(len(pair["observations"]), 1)
+        self.assertEqual(pair["observations"][0]["trial"], 0)
+
     def test_cli_avoids_combined_duplicates(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)

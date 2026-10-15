@@ -49,7 +49,7 @@ def aggregate(rows):
 
 def paired_differences(rows, threshold):
     arms = sorted({r["arm"] for r in rows})
-    cells = {(r.get("trial"), r["task"], r["arm"]): r for r in rows}
+    cells = {(r.get("trial", 0), r["task"], r["arm"]): r for r in rows}
     pairs = []
     for a, b in itertools.combinations(arms, 2):
         observations, excluded = [], []

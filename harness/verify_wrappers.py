@@ -33,6 +33,10 @@ def check_capture(directory, condition, *, probe=False):
         reasons.append("missing source-reviewed instrumentation patch hash, revision and execute-function locations")
     expected = condition.get("expected_activation") or {}
     identities = expected.get("wrapper_implementations") or {}
+    if not isinstance(expected.get("settings"), dict) or not all(k in expected["settings"] for k in ("compression", "retrieval")):
+        reasons.append("missing source-verified expected effective compression/retrieval settings")
+    if condition.get("blocked_reason"):
+        reasons.append(condition["blocked_reason"])
     required = expected.get("wrapper_tools", [])
     if not required or any(not identities.get(t) for t in required):
         reasons.append("missing source-verified wrapper implementation IDs for required built-in-name tools")
@@ -47,7 +51,9 @@ def check_capture(directory, condition, *, probe=False):
             errors.append({"toolCallId": r.get("toolCallId"), "reason": "audit call not present in trace"})
             continue
         error = None
-        if identities.get(c["name"]) != r.get("implementation_id"):
+        if r.get("success") is not (c["isError"] is False):
+            error = "audit completion success disagrees with trace result"
+        elif identities.get(c["name"]) != r.get("implementation_id"):
             error = "implementation ID not source-verified for this tool"
         elif not isinstance(r.get("settings"), dict) or not all(k in r["settings"] for k in ("compression", "retrieval")):
             error = "missing effective compression/retrieval settings"
