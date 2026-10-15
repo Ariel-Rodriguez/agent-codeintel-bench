@@ -1,43 +1,45 @@
 # Agent Code-Intelligence Benchmark
 
-Does adding structural code intelligence to a coding agent improve what it
-produces? This site reports controlled A/B experiments — one tool at a time —
-in a fixed, reviewable format.
+Evaluate Pi coding-agent extensions, tools, and optimizations **before** adopting
+them. Trust measurements, not marketing claims.
 
-## Reports
+The framework answers two separate questions with two separate baselines:
 
-| # | Tool | Status | Headline |
+| Comparison | Baseline | Candidate | Answers |
 |---|---|---|---|
-| [0001](reports/0001-structural-code-index.html) | structural code-index extension | concluded | No correctness benefit; token effect depends on the model |
-| [0002](reports/0002-agent-kernel.html) | agent-kernel (AST/BM25 + embeddings + LSP) | concluded | Navigation/impact: input −41/−43%, but `code_search` unused |
-| [0003](reports/0003-agent-kernel-repair.html) | agent-kernel on a repair task | concluded | **Repair: input −49%, wall −46% at equal success** — vendor claim direction transfers |
-| [0004](reports/0004-agent-kernel-discovery-repair.html) | agent-kernel on a discovery repair | concluded | Gain **did not reproduce** (2 cheaper, 1 big outlier); `code_search` still 0 |
-| [0005](reports/0005-long-horizon-retrieval-regression.html) | Long-horizon retrieval regression (A/B/C) | concluded (pilot) | Compression **on** used **+69% tokens** than compression **off**, equal correctness |
-| [Review](reviews/astra-p1p2.html) | astra — repository P1/P2 and next-experiment plan | open | Fixes in progress |
+| **Scientific** | vanilla Pi | vanilla Pi + candidate | Does the candidate help at all? |
+| **Adoption** | our configured Pi | our configured Pi + candidate | Does it help *our* setup? |
 
-## The format
+A scientific win does **not** imply an adoption recommendation. Adoption requires
+no correctness regression plus a repeatable, meaningful benefit.
 
-Every report uses the same sections so results can be compared across tools:
-**Hypothesis → Method → Materials → Evidence → Analysis → Threats → Conclusion →
-Reproduction**. The template is in [Report format](format.html).
+## Start here
 
-## How to read a result here
+- [Dual-baseline workflow](dual-baseline.md) — conditions, comparisons, verdicts.
+- [Report format](format.md) — the required structure for every result.
+- [Agent workflow](../PROMPT.md) — how a coding agent runs a candidate end to end.
+- [Adding a tool](../harness/adapters.md) — adapters and instrumentation.
+- [Contributing](../CONTRIBUTING.md) — commit policy and how to claim a test.
 
-- Correctness and cost are reported separately. A tool can save tokens and still
-  not be worth adopting, or vice versa.
-- Every number comes from a stored run: prompt hash, event stream, exit code,
-  wall time, token usage, and tool calls. See the repository's `harness/`.
-- Sample sizes are small. A single trial is labelled as such; effects are only
-  claimed when they repeat across counterbalanced trials.
-- "The tool is installed" is never treated as evidence that it was used; each
-  report verifies tool visibility and execution in the raw stream.
+## How it works
 
-## Corpora
+- A **manifest** (`experiments/*.json`) declares named conditions and the
+  comparisons between them.
+- The isolated runner executes each condition in a fresh container with no
+  network egress, counterbalanced, sequentially.
+- Correctness is verified by **executable tests** host-side; treatment activation
+  is **verified from instrumentation**, never assumed.
+- A comparison layer reports per-task paired correctness and resources and emits
+  independent **scientific** and **adoption** verdicts.
 
-Reports state the corpus **shape** (files, lines, symbol and AST-node counts) so
-readers can judge how hard the task was — without disclosing any source,
-identifiers, or semantics of a private repository.
+## Statuses
 
-## Repository
+`Adopt` · `Adopt selectively` · `Experimental` · `Reject` · `Insufficient evidence`
+· `Blocked / invalid experiment`. Missing configuration or unverified activation
+fails closed.
 
-Harness and methodology: [github.com/Ariel-Rodriguez/agent-codeintel-bench](https://github.com/Ariel-Rodriguez/agent-codeintel-bench).
+## Archive
+
+Earlier single-candidate reports (0001–0005) and the legacy local runner are kept
+under [`archive/`](../archive/) for provenance. They are superseded by the
+dual-baseline framework and are not part of the current workflow.

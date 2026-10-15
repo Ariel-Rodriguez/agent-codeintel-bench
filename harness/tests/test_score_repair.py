@@ -86,7 +86,7 @@ class ReconstructionTests(unittest.TestCase):
             self.assertIn("60.0", git("diff", baseline, "--"))
             self.assertNotIn(".venv", git("diff", baseline, "--"))
         self.assertIn('git diff "$baseline_head" --', (repo / "docker/entrypoint.sh").read_text())
-        self.assertIn('git diff "$BASELINE_HEAD" --', (repo / "harness/run_condition.sh").read_text())
+        self.assertIn('git diff "$BASELINE_HEAD" --', (repo / "archive/harness-legacy/run_condition.sh").read_text())
 
     def test_build_context_excludes_host_materials_and_unbroken_corpus(self):
         root = pathlib.Path(__file__).resolve().parents[2]

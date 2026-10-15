@@ -14,11 +14,11 @@ Docker box with **no internet egress**, so a bad tool cannot phone home.
 |---|---|
 | Read the results | [website](https://ariel-rodriguez.github.io/agent-codeintel-bench/) · [`docs/index.md`](docs/index.md) |
 | Write a report in the standard format | [`docs/format.md`](docs/format.md) |
-| See the reports | [`docs/reports/`](docs/reports/) (0001 concluded, 0002 blocked) |
+| See past reports | [`archive/reports/`](archive/reports/) |
 | Evaluate a candidate against vanilla and configured Pi | [`docs/dual-baseline.md`](docs/dual-baseline.md) · [`experiments/dual-baseline.json`](experiments/dual-baseline.json) (blocked template) |
 | Run a test in the isolated container | [`docker/README.md`](docker/README.md) |
 | Add a new tool to test | [`harness/adapters.md`](harness/adapters.md) |
-| Bring my own repo + tool | [`harness/setup_test.sh`](harness/setup_test.sh) |
+| Bring my own repo + tool | [`docs/dual-baseline.md`](docs/dual-baseline.md) · [`harness/run_isolated.sh`](harness/run_isolated.sh) |
 | Check a tool for risky behaviour | `python3 harness/scan_extension.py <tool>` · `docker/run.sh probe` |
 | Measure how big a repo is | `python3 harness/repo_complexity.py <repo>` |
 | Let an agent run the experiment | [`PROMPT.md`](PROMPT.md) |

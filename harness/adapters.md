@@ -4,17 +4,18 @@ For new candidate evaluations prefer the manifest-based
 [dual-baseline workflow](../docs/dual-baseline.md): scientific and adoption pairs,
 frozen sanitized baselines, explicit inheritance and execution proof. The
 candidate alone changes within each pair; a personal baseline may already load
-other pinned extensions. The two-arm adapter below remains supported.
+other pinned extensions. The legacy two-arm local runner is archived under
+`archive/harness-legacy/` and is no longer the supported path.
 
 The harness treats "enhanced" as *baseline plus one tool*. A tool is any Pi
 extension, MCP server, or custom tool set that adds structural code intelligence
-(symbols, call graphs, references, impact). The only contract is the two env
-values read by `harness/run_condition.sh`:
+(symbols, call graphs, references, impact). The relevant manifest condition fields
+are:
 
-| env | meaning |
+| field | meaning |
 |---|---|
-| `ENHANCED_TOOLS` | comma-separated `--tools` list for the enhanced arm, e.g. `read,bash,edit,write,codeindex_*` |
-| `CODEINTEL_EXT` | path passed to `pi -e <path>` for the enhanced arm (leave empty for MCP/tool-only integrations) |
+| `tools` | the `--tools` allowlist for the condition, e.g. `read,bash,edit,write,codeindex_*` |
+| `extension` | path passed to `pi -e <path>` (empty for MCP/tool-only integrations) |
 
 Baseline always uses `read,bash,edit,write` unless you override `BASELINE_TOOLS`.
 Everything else — prompt, tasks, scoring, fixture — stays fixed, which keeps the
@@ -23,11 +24,12 @@ comparison to "added code intelligence only".
 ## Tool #1: `pi-codeindex` (structural index)
 
 ```bash
-export ENHANCED_TOOLS='read,bash,edit,write,codeindex_*'
-export CODEINTEL_EXT="$PWD/vendor/pi-codeindex/src/pi/index.ts"
-harness/prepare.sh
-harness/run_suite.sh run1
-harness/evaluate.py run1
+export CONDITIONS_FILE="$PWD/experiments/dual-baseline.json" \
+       CORPUS=<corpus> TASKS=<benchmarks> OUT="$PWD/out" RUN_ID=codeindex-1 TRIALS=6 \
+       DUAL_IMAGE=<image> PI_PROVIDER=<p> PI_MODEL=<m> PI_THINKING=medium \
+       UPSTREAM_BASE_URL=<model-origin>
+harness/run_isolated.sh
+python3 harness/compare.py --results out --run-id codeindex-1 --conditions "$CONDITIONS_FILE"
 ```
 
 Vendor the tool under `vendor/` (gitignored) or point `CODEINTEL_EXT` at an
