@@ -79,7 +79,8 @@ run_one() {
   fi
   ( cd "$scratch" \
       && git add -A \
-      && git -c user.email=bench@local -c user.name=bench commit -qm "condition snapshot" ) \
+      && GIT_AUTHOR_DATE=2000-01-01T00:00:00Z GIT_COMMITTER_DATE=2000-01-01T00:00:00Z \
+         git -c user.email=bench@local -c user.name=bench commit -qm "condition snapshot" ) \
     || git -C "$scratch" rev-parse --verify HEAD >/dev/null 2>&1 \
     || die "could not create a baseline commit in $scratch"
 
@@ -97,6 +98,19 @@ run_one() {
   shasum -a 256 "$prompt" | awk '{print $1}' > "$out/prompt.sha256"
   ( cd "$scratch" && git rev-parse HEAD > "$out/head_before.txt" \
                  && git status --porcelain > "$out/status_before.txt" )
+
+  if [ -n "${CONDITION_FILE:-}" ]; then
+    ( cd "$scratch" && git write-tree > "$out/snapshot_tree.txt" )
+    PI_CODING_AGENT_DIR="$cfg" PI_CODING_AGENT_SESSION_DIR="$cfg/sessions" \
+      python3 "$ROOT/harness/run_cell.py" --condition "$CONDITION_FILE" \
+        --workspace "$scratch" --out "$out" --prompt "$prompt"
+    ( cd "$scratch" \
+        && git status --porcelain > "$out/status_after.txt" \
+        && git diff HEAD > "$out/final.patch" \
+        && git ls-files --others --exclude-standard > "$out/untracked_files.txt" \
+        && { git ls-files --others --exclude-standard -z | tar --null -czf "$out/untracked.tgz" -T -; } )
+    return 0
+  fi
 
   local tools extra=()
   if [ "$arm" = "baseline" ]; then

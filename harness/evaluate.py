@@ -386,7 +386,11 @@ def assistant_texts(stream: pathlib.Path):
 
 def parse_run(directory: pathlib.Path, *, spec: dict | None = None,
               tokenizer=None, condition: dict | None = None) -> dict:
-    spec = spec or {}
+    spec = dict(spec or {})
+    runtime_path = directory / "runtime_metadata.json"
+    if runtime_path.exists():
+        runtime = json.loads(runtime_path.read_text())
+        spec.setdefault("workspace", runtime.get("workspace", "/workspace"))
     events = load_events(directory / "stdout.jsonl")
     calls = normalize_tool_calls(events)
     metrics = dict.fromkeys(("input_tokens", "output_tokens", "cache_read", "cache_write",
@@ -502,6 +506,8 @@ def main(argv: list[str] | None = None) -> int:
             if (directory / "blocked.json").exists():
                 metrics["cell_status"] = "blocked"
                 metrics["invalid_reason"] = json.loads((directory / "blocked.json").read_text()).get("reason")
+            elif (directory / "container_failure.json").exists():
+                metrics["invalid_reason"] = "container orchestration failed (see container_failure.json)"
             elif not stream.exists() or not stream.stat().st_size:
                 metrics["invalid_reason"] = "missing or empty stdout.jsonl"
             elif condition.get("expected_activation", {}).get("wrapper_tools") and metrics["activation_status"] != "verified":

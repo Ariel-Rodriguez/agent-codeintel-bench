@@ -20,6 +20,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -n "${CONDITIONS_FILE:-}" ]; then
+  exec python3 "$ROOT/harness/run_manifest.py" --conditions "$CONDITIONS_FILE"
+fi
 CORPUS="${CORPUS:?set CORPUS to the repository directory or zip}"
 TASKS="${TASKS:?set TASKS to the directory holding <task>/prompt.md}"
 RUN_ID="${RUN_ID:-run1}"

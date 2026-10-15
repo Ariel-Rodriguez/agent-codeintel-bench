@@ -42,6 +42,56 @@ source work/tool.env
 `provision.sh` (build-time setup) and `warmup.sh` (model download) are optional
 hooks inside the tool directory.
 
+## Kernel retrieval experiment — source-dependent BLOCKED items
+
+`experiments/kernel-retrieval.json` is a **draft, not a frozen treatment**.
+Reports 0003–0004 pin Kernel `b9e93be` / v0.4.0, **lean**. No pinned Kernel
+source, instrumented image, raw container Pi trace or tokenizer assets are
+supplied in this repository. Do not infer “fully enabled” from those reports.
+
+- **B BLOCKED:** inspect that exact revision, expand the full revision hash,
+  establish the actual full configuration and add identical B/C execute-function
+  instrumentation before clearing `blocked_reason`.
+- **C BLOCKED:** no independent supported compression switch has been verified.
+  Inspect read clamping, search compaction, edit-result shaping, any shell
+  shaping, and context hooks. Do not invent an environment flag. A versioned
+  bypass patch is a separate treatment, not a supported upstream ablation.
+- **Compatibility BLOCKED:** validate raw event normalization against Pi 1.2.0
+  from the actual container. Synthetic unit traces do not establish compatibility.
+- **Exposure/pilots BLOCKED:** validate diagnostic pre/post visibility and real
+  multi-cycle inspect/edit/test traces before freezing tasks or starting trials.
+
+All compression/retrieval labels are declarations, not Kernel settings. To unblock
+C, the manifest requires `compression_control.verified`, exact `revision`,
+`source_evidence`, allowed `env_keys` and (if needed) `config_files_verified`.
+These fields document a source review; they are not automatic proof of it.
+`config_file` is hashed and checked, not translated into a guessed extension flag;
+use only source-verified native configuration bindings in the declared `env`.
+Extension entry, guidance/config and prompt hashes are recorded in runtime
+metadata; image IDs, corpus tree hash, model, tools, limits and condition config
+are recorded per cell. An extension-entry hash is NOT a full source/patch hash:
+supply reviewed `extension_revision_evidence` and patch hash when available.
+
+Set `CONDITIONS_FILE=$PWD/experiments/kernel-retrieval.json` for manifest mode.
+The isolated runner uses ABC, BCA, CAB, ACB, CBA, BAC sequentially (3-trial pilot
+or 6-trial run). Existing A/B mode remains available without a manifest. Every
+cell gets only its own writable `/out`; there is no Compose default result
+mount. Hidden tests, references and metrics specs never enter the agent container.
+A/B/C use the same declared tool image, with Kernel unloaded in A. Missing
+images are blocked; orchestration uses local images (`--pull never`). Scoring
+uses one trusted `SCORING_IMAGE` (defaults to A's image), never each arm's image.
+Snapshot commit dates are deterministic. Do not reuse a nonempty cell directory.
+
+`run_condition.sh` also resolves the manifest, using its preprepared per-condition
+workspace. It is a local runner, **not** a sandbox; use `run_isolated.sh` for
+untrusted tools. `run_cell.py` shares the exact production flags, clears ambient
+treatment environment (even unknown Kernel keys), and applies only declared env
+plus runtime/model/cache essentials. Declare required dependency settings rather
+than relying on global exports. Native Pi truncation/compaction flags are not
+changed. Wall time and output limits apply equally, retain terminated output and
+record termination; combined-output polling can overshoot briefly, with a hard
+per-file cap. All attempted costs remain in summaries, including failures.
+
 ## Tools worth adding next
 
 - LSP-backed symbol tools (e.g. a language-server bridge)
