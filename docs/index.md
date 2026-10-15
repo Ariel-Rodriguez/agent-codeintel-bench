@@ -13,6 +13,13 @@ The framework answers two separate questions with two separate baselines:
 A scientific win does **not** imply an adoption recommendation. Adoption requires
 no correctness regression plus a repeatable, meaningful benefit.
 
+## Runs
+
+- [pi-agent-kernel 6×2 (A/B/C)](runs/kernel-6x2.md) — concluded: no correctness
+  benefit; compression **on** cost **+50%** vs **off** on the long task at equal
+  success; kernel helped on the short task. Adoption comparison **blocked**
+  (no personal baseline).
+
 ## Start here
 
 - [Dual-baseline workflow](dual-baseline.md) — conditions, comparisons, verdicts.
