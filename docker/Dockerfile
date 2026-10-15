@@ -1,9 +1,9 @@
 # Isolated runner for untrusted code-intelligence extensions.
 #
 # Build:  docker/run.sh build
-# Run:    docker/run.sh run
+# Run:    docker/run.sh isolate     (fresh container per condition)
+# Probe:  docker/run.sh probe       (static scan + no-network load)
 # Shell:  docker/run.sh shell
-# Down:   docker/run.sh down
 #
 # A code-intelligence extension runs inside the Pi process with the same OS
 # permissions as Pi. Treat every extension and every target repo as untrusted:
@@ -25,7 +25,10 @@ RUN npm install -g "${PI_PACKAGE}@${PI_VERSION}"
 RUN useradd --create-home --uid 10001 runner
 WORKDIR /bench
 COPY --chown=runner:runner . /bench
-RUN chmod +x /bench/harness/*.sh /bench/harness/*.py /bench/docker/*.sh /bench/docker/*.py
+
+# Harness probing dependency: jiti loads TS extensions the way Pi does.
+RUN cd /bench/harness && npm install --no-audit --no-fund \
+ && chmod +x /bench/harness/*.sh /bench/harness/*.py /bench/docker/*.sh /bench/docker/*.py
 
 USER runner
 ENV PI_SKIP_VERSION_CHECK=1 \

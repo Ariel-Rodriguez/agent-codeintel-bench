@@ -26,6 +26,7 @@ services:
     entrypoint: ["python3", "/bench/docker/gateway.py"]
     networks:
       - bench-net
+      - default
     environment:
       UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-}
       GATEWAY_PORT: "8080"
@@ -43,11 +44,11 @@ services:
       - bench-net
     read_only: true
     tmpfs:
-      - /tmp:size=256m
-      - /bench/work:size=512m
-      - /bench/results:size=256m
-      - /bench/configs:size=64m
-      - /home/runner:size=128m
+      - /tmp:size=256m,mode=1777
+      - /bench/work:size=512m,mode=1777
+      - /bench/results:size=256m,mode=1777
+      - /bench/configs:size=64m,mode=1777
+      - /home/runner:size=128m,mode=1777
     volumes:
       # Only the results directory and the (optional) auth file are mounted.
       # The corpus, the single task prompt, and the tool come from per-run mounts
@@ -75,10 +76,13 @@ services:
     network_mode: none
     read_only: true
     tmpfs:
-      - /tmp:size=64m
-      - /home/runner:size=64m
+      - /tmp:size=64m,mode=1777
+      - /home/runner:size=64m,mode=1777
     volumes:
       - ../inputs:/inputs:ro
+    environment:
+      TOOL_PATH: ${TOOL_PATH:-}
+      TOOL_ENTRY: ${TOOL_ENTRY:-}
     command: ["probe"]
     cap_drop:
       - ALL

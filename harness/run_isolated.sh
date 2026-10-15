@@ -44,18 +44,20 @@ fi
 [ -n "${UPSTREAM_BASE_URL:-}" ] || { echo "error: UPSTREAM_BASE_URL is required (model origin, no /v1)" >&2; exit 2; }
 
 mkdir -p "$OUT" "$ROOT/.no-auth"
+# The container runs as an unprivileged user; make the result bind-mount writable.
+chmod 777 "$OUT" 2>/dev/null || true
 compose() { docker compose -f "$ROOT/docker/compose.yaml" "$@"; }
 
 run_one() {
-  local arm="$1" task="$2" image="$3"
+  local arm="$1" task="$2" image="$3" label="$4"
   local prompt="$TASKS/$task/prompt.md"
   [ -f "$prompt" ] || { echo "error: missing prompt $prompt" >&2; exit 2; }
   local volumes=(-v "$CORPUS:/corpus:ro" -v "$prompt:/task/prompt.md:ro" -v "$OUT:/out")
   [ -f "$TASKS/$task/fixture.patch" ] && volumes+=(-v "$TASKS/$task/fixture.patch:/task/fixture.patch:ro")
 
-  echo ">>> $RUN_ID trial-order $arm/$task (image=$image) $(date +%T)"
+  echo ">>> $label $arm/$task (image=$image) $(date +%T)"
   BENCH_IMAGE="$image" compose run --rm \
-    -e ARM="$arm" -e TASK="$task" -e RUN_ID="$RUN_ID" \
+    -e ARM="$arm" -e TASK="$task" -e RUN_ID="$label" \
     -e BASELINE_TOOLS -e ENHANCED_TOOLS -e CODEINTEL_EXT -e TOOL_ENTRY \
     -e PI_PROVIDER -e PI_MODEL -e PI_THINKING \
     "${volumes[@]}" bench run-one
@@ -64,14 +66,32 @@ run_one() {
 trial=0
 while [ "$trial" -lt "$TRIALS" ]; do
   trial=$((trial + 1))
+  label="$RUN_ID-t$trial"
   if [ $((trial % 2)) -eq 1 ]; then ORDER=(baseline enhanced); else ORDER=(enhanced baseline); fi
   for task in $TASK_LIST; do
     for arm in "${ORDER[@]}"; do
-      if [ "$arm" = "baseline" ]; then run_one baseline "$task" "$BASE_IMAGE"
-      else run_one enhanced "$task" "$ENHANCED_IMAGE"; fi
+      if [ "$arm" = "baseline" ]; then run_one baseline "$task" "$BASE_IMAGE" "$label"
+      else run_one enhanced "$task" "$ENHANCED_IMAGE" "$label"; fi
     done
   done
+  echo ">>> scoring $label (host-side)"
+  python3 "$ROOT/harness/evaluate.py" --results "$OUT" --references "$TASKS" --label "$label"
 done
 
-echo ">>> scoring (host-side)"
-python3 "$ROOT/harness/evaluate.py" --results "$OUT" --references "$TASKS" --label "$RUN_ID"
+# Combine all trial summaries into out/<RUN_ID>/summary.jsonl
+python3 - "$OUT" "$RUN_ID" "$TRIALS" <<'PY'
+import json, pathlib, sys
+out, run_id, trials = pathlib.Path(sys.argv[1]), sys.argv[2], int(sys.argv[3])
+rows = []
+for t in range(1, trials + 1):
+    summary = out / f"{run_id}-t{t}" / "summary.jsonl"
+    if summary.exists():
+        for line in summary.read_text().splitlines():
+            if line.strip():
+                row = json.loads(line)
+                row["trial"] = t
+                rows.append(row)
+dest = out / run_id
+(dest / "summary.jsonl").write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in rows))
+print(f"combined {len(rows)} cells into {dest}/summary.jsonl")
+PY

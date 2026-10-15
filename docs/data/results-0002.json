@@ -1,0 +1,182 @@
+{
+  "model": "local Qwen3.8-27B IQ3_S 224k, medium",
+  "report": "0002",
+  "runs": [
+    {
+      "arm": "baseline",
+      "input_tokens": 7172,
+      "output_tokens": 1969,
+      "score": 5,
+      "score_max": 5,
+      "task": "impact",
+      "tool_calls": 4,
+      "tool_calls_by_name": {
+        "bash": 4
+      },
+      "trial": "t1",
+      "wall_seconds": 26.66
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 7340,
+      "output_tokens": 1982,
+      "score": 7,
+      "score_max": 7,
+      "task": "navigation",
+      "tool_calls": 6,
+      "tool_calls_by_name": {
+        "bash": 4,
+        "read": 2
+      },
+      "trial": "t1",
+      "wall_seconds": 27.026
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 5085,
+      "output_tokens": 1685,
+      "score": 5,
+      "score_max": 5,
+      "task": "impact",
+      "tool_calls": 6,
+      "tool_calls_by_name": {
+        "bash": 6
+      },
+      "trial": "t1",
+      "wall_seconds": 25.742
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 3103,
+      "output_tokens": 1992,
+      "score": 7,
+      "score_max": 7,
+      "task": "navigation",
+      "tool_calls": 5,
+      "tool_calls_by_name": {
+        "bash": 3,
+        "read": 2
+      },
+      "trial": "t1",
+      "wall_seconds": 28.203
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 5678,
+      "output_tokens": 1059,
+      "score": 5,
+      "score_max": 5,
+      "task": "impact",
+      "tool_calls": 3,
+      "tool_calls_by_name": {
+        "bash": 3
+      },
+      "trial": "t2",
+      "wall_seconds": 16.176
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 7184,
+      "output_tokens": 2193,
+      "score": 7,
+      "score_max": 7,
+      "task": "navigation",
+      "tool_calls": 9,
+      "tool_calls_by_name": {
+        "bash": 5,
+        "read": 4
+      },
+      "trial": "t2",
+      "wall_seconds": 29.629
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 3076,
+      "output_tokens": 1177,
+      "score": 5,
+      "score_max": 5,
+      "task": "impact",
+      "tool_calls": 5,
+      "tool_calls_by_name": {
+        "bash": 4,
+        "read": 1
+      },
+      "trial": "t2",
+      "wall_seconds": 21.286
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 4325,
+      "output_tokens": 2488,
+      "score": 7,
+      "score_max": 7,
+      "task": "navigation",
+      "tool_calls": 9,
+      "tool_calls_by_name": {
+        "bash": 5,
+        "read": 4
+      },
+      "trial": "t2",
+      "wall_seconds": 35.165
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 5054,
+      "output_tokens": 2075,
+      "score": 5,
+      "score_max": 5,
+      "task": "impact",
+      "tool_calls": 9,
+      "tool_calls_by_name": {
+        "bash": 9
+      },
+      "trial": "t3",
+      "wall_seconds": 27.752
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 3502,
+      "output_tokens": 1815,
+      "score": 7,
+      "score_max": 7,
+      "task": "navigation",
+      "tool_calls": 5,
+      "tool_calls_by_name": {
+        "bash": 3,
+        "read": 2
+      },
+      "trial": "t3",
+      "wall_seconds": 23.215
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 2110,
+      "output_tokens": 948,
+      "score": 5,
+      "score_max": 5,
+      "task": "impact",
+      "tool_calls": 3,
+      "tool_calls_by_name": {
+        "bash": 3
+      },
+      "trial": "t3",
+      "wall_seconds": 16.413
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 3254,
+      "output_tokens": 1636,
+      "score": 7,
+      "score_max": 7,
+      "task": "navigation",
+      "tool_calls": 7,
+      "tool_calls_by_name": {
+        "bash": 3,
+        "read": 4
+      },
+      "trial": "t3",
+      "wall_seconds": 24.649
+    }
+  ],
+  "tool": "floydous/pi-agent-kernel @ b9e93be (v0.4.0), default lean profile"
+}

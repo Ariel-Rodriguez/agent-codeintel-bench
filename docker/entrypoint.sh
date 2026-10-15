@@ -14,12 +14,17 @@ ROOT=/bench
 die() { echo "error: $*" >&2; exit 1; }
 
 hydrate_caches() {
-  # Build-time model cache must be present and copy cleanly; a partial copy would
+  # Build-time model caches must be present and copy cleanly; a partial copy would
   # silently change the treatment, so a failure is fatal.
   if [ -n "${TOOL_CACHE:-}" ] && [ -d "${TOOL_CACHE}/hf" ]; then
     mkdir -p "${HF_HOME:-$HOME/.cache/huggingface}"
     cp -R "${TOOL_CACHE}/hf/." "${HF_HOME:-$HOME/.cache/huggingface}/" \
       || die "cache hydration from ${TOOL_CACHE}/hf failed"
+  fi
+  if [ -n "${TOOL_CACHE:-}" ] && [ -d "${TOOL_CACHE}/pi-cache" ]; then
+    mkdir -p "$HOME/.pi/cache"
+    cp -R "${TOOL_CACHE}/pi-cache/." "$HOME/.pi/cache/" \
+      || die "cache hydration from ${TOOL_CACHE}/pi-cache failed"
   fi
 }
 
@@ -149,14 +154,10 @@ probe() {
   [ -n "$entry" ] || die "no declared or discoverable entry under $target"
   echo "entry: $entry"
 
+  # Containment is the container (no network, read-only root, caps dropped). The
+  # load probe verifies the exact entry imports under Pi's loader and registers.
   local rc=0 loader="$ROOT/harness/probe_load.mjs"
-  if node --experimental-permission --allow-fs-read="$target" -e 'process.exit(0)' >/dev/null 2>&1; then
-    node --experimental-strip-types --experimental-permission \
-      --allow-fs-read="$target" --allow-fs-read="$loader" \
-      "$loader" "$entry" 2>&1 || rc=$?
-  else
-    node --experimental-strip-types "$loader" "$entry" 2>&1 || rc=$?
-  fi
+  node --experimental-strip-types "$loader" "$entry" 2>&1 || rc=$?
   if [ "$rc" != "0" ]; then
     die "probe: the entry failed to load or register under a no-network, read-only container (rc=$rc)"
   fi

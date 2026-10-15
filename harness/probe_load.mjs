@@ -6,6 +6,9 @@
 //
 // Exit codes: 0 loaded, 3 load/registration threw.
 import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 const entry = process.argv[2];
 if (!entry) {
@@ -42,7 +45,11 @@ const pi = new Proxy(
 );
 
 try {
-  const module = await import(pathToFileURL(entry).href);
+  // Pi loads extensions with jiti (TS + extensionless imports). Use the same
+  // loader so the probe fails for the same reasons Pi would.
+  const { createJiti } = require("jiti");
+  const jiti = createJiti(pathToFileURL(entry).href, { interopDefault: false });
+  const module = await jiti.import(entry);
   const factory = module.default ?? module;
   if (typeof factory !== "function") {
     console.error("PROBE LOAD FAILED: entry has no default export function");

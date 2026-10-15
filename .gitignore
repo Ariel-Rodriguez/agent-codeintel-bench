@@ -31,3 +31,6 @@ __pycache__/
 # os / editor
 .DS_Store
 *.swp
+
+# harness probe deps (installed in the image)
+node_modules/

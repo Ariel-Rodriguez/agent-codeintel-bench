@@ -1,0 +1,9 @@
+{
+  "name": "agent-codeintel-bench-harness",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Probe/loader dependencies for the benchmark harness.",
+  "dependencies": {
+    "jiti": "^2.4.2"
+  }
+}

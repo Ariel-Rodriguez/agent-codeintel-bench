@@ -20,8 +20,9 @@ RUN set -eux; \
       else npm install --no-audit --no-fund; fi; \
     fi; \
     if [ -f provision.sh ]; then bash provision.sh; fi; \
-    mkdir -p /opt/tool-cache/hf; \
+    mkdir -p /opt/tool-cache/hf /opt/tool-cache/pi-cache; \
     if [ -f warmup.sh ]; then HF_HOME=/opt/tool-cache/hf TRANSFORMERS_CACHE=/opt/tool-cache/hf bash warmup.sh; fi; \
+    if [ -d /home/runner/.pi/cache ]; then cp -R /home/runner/.pi/cache/. /opt/tool-cache/pi-cache/; fi; \
     chown -R runner:runner "/opt/tools/${TOOL_NAME}" /opt/tool-cache
 
 # At run time, caches are hydrated into a writable tmpfs and the network is off.
