@@ -1,6 +1,6 @@
 # Report 0002 — Agent-kernel (AST/BM25 + embeddings + LSP)
 
-- **Status:** in progress
+- **Status:** blocked — prerequisite: offline embedding model / vendored deps
 - **Tool under test:** `floydous/pi-agent-kernel` @ `b9e93be` (AST/BM25 search,
   repository map, LSP bridging; unlike report 0001 it also **redefines** the
   built-in tools, so it is a larger treatment)
@@ -33,6 +33,15 @@ verification as [report 0001](0001-structural-code-index.html), with two changes
 
 **Pre-run checks:** `harness/scan_extension.py` (static risk scan) and
 `docker/run.sh probe` (no-network load) are recorded before any benchmark run.
+
+**Feasibility note (blocking):** at the pinned revision the tool has no vendored
+`node_modules`, and its dependency set includes `@huggingface/transformers`,
+which fetches an embedding model at runtime. A container with **no network**
+cannot do that, so the dependencies and the embedding model must be installed and
+cached **at image build time** (which is allowed to use the network); the run
+itself then stays offline. Until that image exists, this report is `blocked` on a
+prerequisite, not `concluded`. If the tool degrades gracefully without the
+embedding model, that degraded configuration must be stated as the treatment.
 
 ## 3. Materials
 
