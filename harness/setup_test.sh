@@ -89,6 +89,18 @@ for arm in baseline enhanced; do
 JSON
   chmod 600 "$cfg/settings.json"
 
+  # Optionally force all model traffic through the allowlisted gateway.
+  if [ -n "${MODEL_GATEWAY:-}" ] && [ -f "$cfg/models.json" ]; then
+    python3 - "$cfg/models.json" "${MODEL%%/*}" "$MODEL_GATEWAY" <<'PY'
+import json, sys
+path, provider, gateway = sys.argv[1], sys.argv[2], sys.argv[3]
+data = json.load(open(path))
+if provider in data.get("providers", {}):
+    data["providers"][provider]["baseUrl"] = gateway
+json.dump(data, open(path, "w"), indent=2)
+PY
+  fi
+
   if [ "$VENV" = "1" ] && { [ -f "$wt/pyproject.toml" ] || [ -f "$wt/setup.py" ]; }; then
     python3 -m venv "$wt/.venv"
     "$wt/.venv/bin/pip" install -q -e "$wt" pytest || \

@@ -1,13 +1,46 @@
-# Isolated A/B runner. Nothing from the host is exposed except inputs/ (read-only)
-# and out/ (results). The container root filesystem is read-only; work/, results/,
-# configs/ and the home directory are ephemeral tmpfs, so teardown leaves no trace.
+# Isolation model
+#
+#   bench-net (internal)   gateway                 default bridge
+#   ────────────────────   ───────                 ──────────────
+#   bench  ──only──> gateway ──only model host──>  internet
+#
+# * `bench` is attached ONLY to `bench-net`, an internal network with no route
+#   off the host. It cannot reach the internet directly.
+# * `gateway` is the one allowlisted egress path: it forwards to a single
+#   UPSTREAM_BASE_URL. A malicious extension can talk to the model and nothing
+#   else, so it cannot exfiltrate to arbitrary hosts.
+# * `probe` has `network_mode: none` — zero network, used for the malicious
+#   behaviour check.
+#
+# Teardown: docker/run.sh down   (containers and anonymous volumes are removed)
+networks:
+  bench-net:
+    internal: true
+
 services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: agent-codeintel-bench
+    entrypoint: ["python3", "/bench/docker/gateway.py"]
+    networks:
+      - bench-net
+    environment:
+      UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-}
+      GATEWAY_PORT: "8080"
+    restart: unless-stopped
+
   bench:
     build:
       context: ..
       dockerfile: docker/Dockerfile
     image: agent-codeintel-bench
     init: true
+    depends_on:
+      - gateway
+    networks:
+      - bench-net
     read_only: true
     tmpfs:
       - /tmp:size=256m
@@ -18,9 +51,8 @@ services:
     volumes:
       - ../inputs:/inputs:ro
       - ../out:/bench/out
-      # Optional: mount a directory containing auth.json read-only. It is then
-      # readable by the untrusted extension (that is the tradeoff for giving the
-      # agent model access). Prefer a scoped, short-lived key.
+      # Optional auth dir, read-only. The untrusted extension can read whatever
+      # is here; prefer a scoped, short-lived key.
       - ${PI_AUTH_DIR:-../.no-auth}:/auth:ro
     environment:
       PI_USER_AGENT_DIR: /auth
@@ -30,10 +62,24 @@ services:
       ENHANCED_TOOLS: ${ENHANCED_TOOLS:-read,bash,edit,write}
       CODEINTEL_EXT: ${CODEINTEL_EXT:-}
       RUN_ID: ${RUN_ID:-run1}
+      # All model traffic goes through the gateway, never direct.
+      MODEL_GATEWAY: http://gateway:8080/v1
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
-    # Network is needed for the model API. To further restrict egress, put the
-    # model behind a proxy and set an internal network, or override this service
-    # with a network that only reaches the provider.
+
+  probe:
+    image: agent-codeintel-bench
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+      - /home/runner:size=64m
+    volumes:
+      - ../inputs:/inputs:ro
+    command: ["probe"]
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

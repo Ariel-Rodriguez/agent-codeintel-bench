@@ -20,7 +20,10 @@ You are setting up and running a code-intelligence A/B test in this repository.
      no tool was provided and stop).
    Determine the adapter: the `pi -e` path for an extension, and the `--tools`
    glob for its tools. Record the tool's revision (git sha or version).
-3. **Set up baseline vs experiment** with the setup script:
+3. **Scan the tool before running it.** Run `python3 harness/scan_extension.py
+   inputs/tool` (or `docker/run.sh probe`). Record the findings. The bench
+   container has no direct network egress; say so in the report.
+4. **Set up baseline vs experiment** with the setup script:
 
    ```bash
    harness/setup_test.sh --repo inputs/repo.zip --tool inputs/tool \
@@ -29,22 +32,22 @@ You are setting up and running a code-intelligence A/B test in this repository.
    ```
 
    Register the test by opening a **Claim a test** issue before running.
-4. **Define the tasks.** If the repo is the bundled fixture, the tasks in
+5. **Define the tasks.** If the repo is the bundled fixture, the tasks in
    `benchmarks/` already apply. Otherwise, derive answers independently (grep,
    reading code — not from a model) and add one directory per task family with
    `prompt.md` and `reference.json`. Cover navigation, impact, repair, and
    cross-session persistence where the repo allows.
-5. **Run** at least 3 counterbalanced trials, sequentially:
+6. **Run** at least 3 counterbalanced trials, sequentially:
 
    ```bash
    for r in run1 run2 run3; do harness/run_suite.sh "$r"; done
    harness/evaluate.py run1 run2 run3
    ```
 
-6. **Verify the tool was used.** For each enhanced run, parse the system prompt
+7. **Verify the tool was used.** For each enhanced run, parse the system prompt
    and `tool_execution_*` events. If the tool was never visible or called, say so
    — do not report a result as if the treatment were applied.
-7. **Report.** Summarise quality and speed per task family, with raw paths,
+8. **Report.** Summarise quality and speed per task family, with raw paths,
    limitations, and an explicit verdict. Commit with an `Add`/`Fix`/`Chore`
    message and comment the result on the claim issue.
 

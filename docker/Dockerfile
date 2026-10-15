@@ -25,7 +25,7 @@ RUN npm install -g "${PI_PACKAGE}@${PI_VERSION}"
 RUN useradd --create-home --uid 10001 runner
 WORKDIR /bench
 COPY --chown=runner:runner . /bench
-RUN chmod +x /bench/harness/*.sh /bench/harness/evaluate.py /bench/docker/entrypoint.sh
+RUN chmod +x /bench/harness/*.sh /bench/harness/*.py /bench/docker/*.sh /bench/docker/*.py
 
 USER runner
 ENV PI_SKIP_VERSION_CHECK=1 \

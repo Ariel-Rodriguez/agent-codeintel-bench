@@ -52,6 +52,22 @@ docker/run.sh down     # tear down (containers and volumes)
 
 See [`docker/README.md`](docker/README.md) for credentials and network options.
 
+#### Check the tool before trusting it
+
+The bench container has **no direct network egress** — it reaches the model only
+through an allowlisted gateway, so an untrusted extension cannot exfiltrate to
+arbitrary hosts. To inspect a tool first:
+
+```bash
+docker/run.sh probe    # static risk scan + no-network, read-only load
+```
+
+`harness/scan_extension.py` flags process execution, filesystem writes, network
+access, secret-path reads, `eval`, and obfuscation. The probe then runs the entry
+with `network_mode: none` and a read-only root, so the attempts fail instead of
+succeeding. Try it on the bundled demo by copying
+`examples/untrusted-extension` into `inputs/tool`.
+
 ### Local
 
 ```bash
