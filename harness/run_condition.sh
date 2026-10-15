@@ -38,6 +38,7 @@ mkdir -p "$OUT" "$SESS"
 
 cp "$PROMPT_FILE" "$OUT/prompt.txt"
 shasum -a 256 "$PROMPT_FILE" | awk '{print $1}' > "$OUT/prompt.sha256"
+BASELINE_HEAD="$(git -C "$WT" rev-parse HEAD)"
 ( cd "$WT" && git rev-parse HEAD > "$OUT/head_before.txt" && git status --porcelain > "$OUT/status_before.txt" )
 
 if [ -n "${CONDITIONS_FILE:-}" ]; then
@@ -51,7 +52,10 @@ PY
     PI_CODING_AGENT_DIR="$CFG" PI_CODING_AGENT_SESSION_DIR="$SESS" \
     python3 "$ROOT/harness/run_cell.py" --condition "$OUT/condition.json" \
       --workspace "$WT" --out "$OUT" --prompt "$PROMPT_FILE"
-  ( cd "$WT" && git status --porcelain > "$OUT/status_after.txt" && git diff HEAD > "$OUT/final.patch" )
+  ( cd "$WT" && git status --porcelain > "$OUT/status_after.txt" \
+    && git diff "$BASELINE_HEAD" -- > "$OUT/final.patch" \
+    && git ls-files --others --exclude-standard > "$OUT/untracked_files.txt" \
+    && git ls-files --others --exclude-standard -z | tar --null -czf "$OUT/untracked.tgz" -T - )
   exit 0
 fi
 
@@ -90,6 +94,9 @@ set -e
 END="$(python3 -c 'import time; print(time.time())')"
 echo "$RC" > "$OUT/exit_code"
 python3 -c "print(round($END-$START, 3))" > "$OUT/wall_seconds"
-( cd "$WT" && git status --porcelain > "$OUT/status_after.txt" && git diff > "$OUT/final.patch" )
+( cd "$WT" && git status --porcelain > "$OUT/status_after.txt" \
+  && git diff "$BASELINE_HEAD" -- > "$OUT/final.patch" \
+  && git ls-files --others --exclude-standard > "$OUT/untracked_files.txt" \
+  && git ls-files --others --exclude-standard -z | tar --null -czf "$OUT/untracked.tgz" -T - )
 
 echo "arm=$ARM task=$TASK exit=$RC wall=$(cat "$OUT/wall_seconds")s -> $OUT"

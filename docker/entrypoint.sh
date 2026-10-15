@@ -99,6 +99,8 @@ run_one() {
   ( cd "$scratch" && git rev-parse HEAD > "$out/head_before.txt" \
                  && git status --porcelain > "$out/status_before.txt" )
 
+  local baseline_head
+  baseline_head="$(git -C "$scratch" rev-parse HEAD)"
   if [ -n "${CONDITION_FILE:-}" ]; then
     ( cd "$scratch" && git write-tree > "$out/snapshot_tree.txt" )
     PI_CODING_AGENT_DIR="$cfg" PI_CODING_AGENT_SESSION_DIR="$cfg/sessions" \
@@ -106,7 +108,7 @@ run_one() {
         --workspace "$scratch" --out "$out" --prompt "$prompt"
     ( cd "$scratch" \
         && git status --porcelain > "$out/status_after.txt" \
-        && git diff HEAD > "$out/final.patch" \
+        && git diff "$baseline_head" -- > "$out/final.patch" \
         && git ls-files --others --exclude-standard > "$out/untracked_files.txt" \
         && { git ls-files --others --exclude-standard -z | tar --null -czf "$out/untracked.tgz" -T -; } )
     return 0
@@ -153,7 +155,7 @@ run_one() {
   python3 -c "print(round($end-$start, 3))" > "$out/wall_seconds"
   ( cd "$scratch" \
       && git status --porcelain > "$out/status_after.txt" \
-      && git diff > "$out/final.patch" \
+      && git diff "$baseline_head" -- > "$out/final.patch" \
       && git ls-files --others --exclude-standard > "$out/untracked_files.txt" \
       && { git ls-files --others --exclude-standard -z | tar --null -czf "$out/untracked.tgz" -T - 2>/dev/null || true; } )
 

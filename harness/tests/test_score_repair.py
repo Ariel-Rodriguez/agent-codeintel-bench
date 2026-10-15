@@ -1,10 +1,10 @@
 import io
 import pathlib
 import sys
+import subprocess
 import tarfile
 import tempfile
 import unittest
-from unittest import mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from score_repair import RepairRejected, reconstruct
@@ -54,6 +54,39 @@ class ReconstructionTests(unittest.TestCase):
             self.assertEqual((root / "staged/src/app.py").read_text(), "value = 2\n")
             self.assertFalse((root / "staged/.git").exists())
             self.assertFalse((root / "staged/tests/test_hidden.py").exists())
+
+    def test_test_mode_only_patch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            corpus, task, cell = self.inputs(root)
+            (cell / "final.patch").write_text("diff --git a/tests/test_public.py b/tests/test_public.py\nold mode 100644\nnew mode 100755\n")
+            with self.assertRaisesRegex(RepairRejected, "modified tests"):
+                reconstruct(corpus, task, cell, root / "ws", {})
+
+    def test_fixture_ignores_runtime_artifacts_and_captures_from_initial_head(self):
+        repo = pathlib.Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = pathlib.Path(tmp) / "ws"
+            stage_corpus(repo / "fixtures/widget-service", repo / "benchmarks/repair_retrieval_small", ws)
+            def git(*args):
+                return subprocess.run(["git", *args], cwd=ws, capture_output=True, text=True, check=True).stdout.strip()
+            git("init", "-q")
+            git("add", ".")
+            git("-c", "user.name=test", "-c", "user.email=test@local", "commit", "-qm", "snapshot")
+            baseline = git("rev-parse", "HEAD")
+            (ws / ".venv").mkdir()
+            (ws / ".venv/python").write_text("runtime")
+            (ws / "src/widgets/__pycache__").mkdir()
+            (ws / "src/widgets/__pycache__/runtime.pyc").write_text("runtime")
+            source = ws / "src/widgets/freshness.py"
+            source.write_text(source.read_text().replace("float(heartbeat) - now > 0.0", "float(heartbeat) - now > 60.0"))
+            git("add", ".")
+            git("-c", "user.name=test", "-c", "user.email=test@local", "commit", "-qm", "agent repair")
+            self.assertEqual(git("status", "--porcelain"), "")
+            self.assertIn("60.0", git("diff", baseline, "--"))
+            self.assertNotIn(".venv", git("diff", baseline, "--"))
+        self.assertIn('git diff "$baseline_head" --', (repo / "docker/entrypoint.sh").read_text())
+        self.assertIn('git diff "$BASELINE_HEAD" --', (repo / "harness/run_condition.sh").read_text())
 
     def test_build_context_excludes_host_materials_and_unbroken_corpus(self):
         root = pathlib.Path(__file__).resolve().parents[2]

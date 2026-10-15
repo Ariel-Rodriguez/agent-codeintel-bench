@@ -8,6 +8,7 @@ import json
 import pathlib
 import shlex
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -35,7 +36,7 @@ def snapshot(workspace):
         if path.is_symlink():
             raise RepairRejected(f"symlinks are not allowed in repair workspaces: {name}")
         if path.is_file():
-            result[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+            result[name] = (hashlib.sha256(path.read_bytes()).hexdigest(), stat.S_IMODE(path.stat().st_mode))
     return result
 
 
@@ -134,17 +135,17 @@ def main(argv=None):
         with tempfile.TemporaryDirectory(prefix="repair-") as tmp:
             ws = pathlib.Path(tmp) / "ws"
             changed = reconstruct(args.corpus, args.task_dir, args.cell, ws, verify)
-            trusted_tests = {k: v for k, v in snapshot(ws).items() if protected(k)}
             # The trusted image runs unprivileged; permit an offline venv in the
             # disposable bind mount, never in the source corpus or host task dir.
             for path in [ws, *ws.rglob("*")]:
-                path.chmod(0o777 if path.is_dir() else 0o666)
+                path.chmod(0o777 if path.is_dir() else 0o666 | (path.stat().st_mode & 0o111))
+            trusted_tests = {k: v for k, v in snapshot(ws).items() if protected(k)}
             command = "python3 -m venv --system-site-packages .venv && " + verify["command"]
             seconds = int(verify.get("timeout_seconds", 60))
             if seconds <= 0:
                 raise ScoringInfrastructureError("invalid scoring timeout")
             proc = subprocess.run(["docker", "run", "--rm", "--pull", "never", "--name", container_name,
-                "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                "--network", "none", "--read-only", "--user", "10001:10001", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
                 "--pids-limit", "128", "--memory", "512m", "--cpus", "1", "--tmpfs", "/tmp:rw,size=64m",
                 "--entrypoint", "bash", "-v", f"{ws}:/workspace", "-w", "/workspace", args.image,
                 "-lc", f"timeout --signal=KILL {seconds}s bash -lc {shlex.quote(command)}"],
