@@ -1,0 +1,8 @@
+{
+  "command": ".venv/bin/python tools/run_suite.py --quiet",
+  "timeout_seconds": 60,
+  "reject_test_changes": true,
+  "allowed_changes": ["src/"],
+  "hidden_tests": "hidden_tests",
+  "invariants": ["future skew inclusive through sixty seconds", "freshness window inclusive at its boundary", "malformed or non-finite facts always refuse", "valid observations continue to authorize"]
+}

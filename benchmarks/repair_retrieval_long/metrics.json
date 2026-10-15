@@ -1,0 +1,11 @@
+{
+  "pi_version": "1.2.0",
+  "diagnostics": [
+    {"id": "timestamp-unit", "text": "OBS_TS_UNIT_MISMATCH"},
+    {"id": "replay-identity", "text": "REPLAY_ID_COLLISION"},
+    {"id": "terminal-log", "text": "TERMINAL_LOG_REGRESSION"}
+  ],
+  "truncation_markers": [],
+  "recovery_matching": "Five completed assistant turns; exact normalized read file or conservative simple-shell same-command/file refinement; diagnostic omission requires captured pre/post output",
+  "pilot_status": "BLOCKED: no pinned instrumented Kernel source/image; B/C diagnostic visibility and multi-cycle pilots not established; task is not frozen"
+}

@@ -1,0 +1,6 @@
+{
+  "pi_version": "1.2.0",
+  "diagnostics": [],
+  "truncation_markers": [],
+  "pilot_status": "BLOCKED: same source/image prerequisites as long task; short-output control not yet piloted"
+}

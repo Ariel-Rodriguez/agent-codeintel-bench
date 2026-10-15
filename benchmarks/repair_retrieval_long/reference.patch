@@ -1,0 +1,37 @@
+--- a/src/widgets/freshness.py
++++ b/src/widgets/freshness.py
+@@ -21,7 +21,7 @@
+     if not math.isfinite(seconds):
+         return None
+     if unit == "ms":
+-        seconds = seconds
++        seconds /= 1000.0
+     return seconds
+ 
+ 
+--- a/src/widgets/guarded_transaction.py
++++ b/src/widgets/guarded_transaction.py
+@@ -47,7 +47,7 @@
+         A reused ID with different facts is a conflict, even after termination.
+         New observations after termination are refused without reopening state.
+         """
+-        replay_key = self.operation_id
++        replay_key = observation_id
+         fingerprint = (timestamp, authorized)
+         if replay_key in self._observations:
+             previous, decision = self._observations[replay_key]
+--- a/src/widgets/operation_log.py
++++ b/src/widgets/operation_log.py
+@@ -39,9 +39,9 @@
+         if replay:
+             return document
+         events = document.setdefault("events", [])
+-        if phase != "refused":
+-            events.append({"observation_id": observation_id, "phase": phase, "reason": reason})
+-        document["phase"] = phase
++        events.append({"observation_id": observation_id, "phase": phase, "reason": reason})
++        if document["phase"] not in ("captured", "refused"):
++            document["phase"] = phase
+         self._store(operation_id, document)
+         return document
+ 
