@@ -71,16 +71,23 @@ run_one() {
     cp -R /corpus/. "$scratch/"
   fi
 
-  # A tool may require a fixture (e.g. an introduced bug) before the task.
+  # Init the repo, apply any task fixture (e.g. an introduced bug), then commit
+  # once so HEAD always exists and the agent's diff excludes the fixture.
+  git -C "$scratch" init -q 2>/dev/null || true
   if [ -f /task/fixture.patch ]; then
-    git -C "$scratch" init -q 2>/dev/null || true
     git -C "$scratch" apply /task/fixture.patch || die "fixture.patch did not apply"
   fi
-  if [ ! -d "$scratch/.git" ]; then
-    ( cd "$scratch" \
-        && git init -q \
-        && git add -A \
-        && git -c user.email=bench@local -c user.name=bench commit -qm "condition snapshot" )
+  ( cd "$scratch" \
+      && git add -A \
+      && git -c user.email=bench@local -c user.name=bench commit -qm "condition snapshot" ) \
+    || git -C "$scratch" rev-parse --verify HEAD >/dev/null 2>&1 \
+    || die "could not create a baseline commit in $scratch"
+
+  # Offline test environment: a workspace venv using the image's system packages
+  # (pytest is baked in), so `.venv/bin/python -m pytest` works with no network.
+  if [ -f "$scratch/pyproject.toml" ] && [ ! -x "$scratch/.venv/bin/python" ]; then
+    ( cd "$scratch" && python3 -m venv --system-site-packages .venv ) \
+      || echo "warn: could not create workspace venv" >&2
   fi
 
   local cfg; cfg="$(setup_agent_dir)"
@@ -102,6 +109,11 @@ run_one() {
       extra=(-e "$TOOL_ENTRY")
     else
       die "enhanced arm has no tool entry (TOOL_ENTRY/CODEINTEL_EXT); refusing to run a fake enhanced arm"
+    fi
+    # Optional explicit vendor guidance, so the enhanced treatment is observable
+    # in the captured stream rather than relying on an in-extension injection.
+    if [ -n "${GUIDANCE_FILE:-}" ] && [ -f "$GUIDANCE_FILE" ]; then
+      extra+=(--append-system-prompt "$GUIDANCE_FILE")
     fi
   fi
 

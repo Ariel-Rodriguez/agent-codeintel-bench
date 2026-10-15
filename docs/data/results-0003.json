@@ -1,0 +1,92 @@
+{
+  "model": "local Qwen3.8-27B IQ3_S 224k, medium",
+  "report": "0003",
+  "runs": [
+    {
+      "arm": "baseline",
+      "input_tokens": 15931,
+      "output_tokens": 6199,
+      "repaired": true,
+      "tool_calls": 19,
+      "tool_calls_by_name": {
+        "bash": 18,
+        "edit": 1
+      },
+      "trial": "t1",
+      "wall_seconds": 98.477
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 9094,
+      "output_tokens": 2980,
+      "repaired": true,
+      "tool_calls": 12,
+      "tool_calls_by_name": {
+        "bash": 9,
+        "edit": 1,
+        "read": 2
+      },
+      "trial": "t1",
+      "wall_seconds": 48.165
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 12581,
+      "output_tokens": 5005,
+      "repaired": true,
+      "tool_calls": 14,
+      "tool_calls_by_name": {
+        "bash": 8,
+        "edit": 1,
+        "read": 5
+      },
+      "trial": "t2",
+      "wall_seconds": 70.703
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 5210,
+      "output_tokens": 2804,
+      "repaired": true,
+      "tool_calls": 12,
+      "tool_calls_by_name": {
+        "bash": 7,
+        "code_search": 1,
+        "edit": 1,
+        "read": 3
+      },
+      "trial": "t2",
+      "wall_seconds": 42.797
+    },
+    {
+      "arm": "baseline",
+      "input_tokens": 17963,
+      "output_tokens": 6134,
+      "repaired": true,
+      "tool_calls": 16,
+      "tool_calls_by_name": {
+        "bash": 13,
+        "edit": 1,
+        "read": 2
+      },
+      "trial": "t3",
+      "wall_seconds": 100.543
+    },
+    {
+      "arm": "enhanced",
+      "input_tokens": 9516,
+      "output_tokens": 3456,
+      "repaired": true,
+      "tool_calls": 13,
+      "tool_calls_by_name": {
+        "bash": 8,
+        "edit": 1,
+        "read": 4
+      },
+      "trial": "t3",
+      "wall_seconds": 53.71
+    }
+  ],
+  "task": "repair (freshness regression)",
+  "tool": "floydous/pi-agent-kernel @ b9e93be (v0.4.0), lean profile"
+}

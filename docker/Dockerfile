@@ -20,6 +20,9 @@ RUN apt-get update \
       ca-certificates git python3 python3-venv python3-pip ripgrep unzip \
  && rm -rf /var/lib/apt/lists/*
 
+# Test runner baked in so repair tasks can run offline.
+RUN pip install --break-system-packages --no-cache-dir pytest pytest-xdist
+
 RUN npm install -g "${PI_PACKAGE}@${PI_VERSION}"
 
 RUN useradd --create-home --uid 10001 runner

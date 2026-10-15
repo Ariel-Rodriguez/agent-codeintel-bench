@@ -9,7 +9,8 @@ in a fixed, reviewable format.
 | # | Tool | Status | Headline |
 |---|---|---|---|
 | [0001](reports/0001-structural-code-index.html) | structural code-index extension | concluded | No correctness benefit; token effect depends on the model |
-| [0002](reports/0002-agent-kernel.html) | agent-kernel (AST/BM25 + embeddings + LSP) | concluded | Input tokens −41/−43% (unused `code_search`), correctness equal |
+| [0002](reports/0002-agent-kernel.html) | agent-kernel (AST/BM25 + embeddings + LSP) | concluded | Navigation/impact: input −41/−43%, but `code_search` unused |
+| [0003](reports/0003-agent-kernel-repair.html) | agent-kernel on a repair task | concluded | **Repair: input −49%, wall −46% at equal success** — vendor claim direction transfers |
 | [Review](reviews/astra-p1p2.html) | astra — repository P1/P2 and next-experiment plan | open | Fixes in progress |
 
 ## The format

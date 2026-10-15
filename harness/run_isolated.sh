@@ -64,8 +64,15 @@ run_one() {
   BENCH_IMAGE="$image" compose run --rm \
     -e ARM="$arm" -e TASK="$task" \
     -e BASELINE_TOOLS -e ENHANCED_TOOLS -e CODEINTEL_EXT -e TOOL_ENTRY \
+    -e GUIDANCE_FILE \
     -e PI_PROVIDER -e PI_MODEL -e PI_THINKING \
     "${volumes[@]}" bench run-one
+
+  # Executable repair scoring, host-side, against real tests.
+  if [ -f "$TASKS/$task/verify.json" ]; then
+    python3 "$ROOT/harness/score_repair.py" --corpus "$CORPUS" --cell "$cell" \
+      --task-dir "$TASKS/$task" --image "$image"
+  fi
 }
 
 trial=0

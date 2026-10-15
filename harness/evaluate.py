@@ -138,13 +138,21 @@ def main(argv: list[str] | None = None) -> int:
                 failures.append(f"{arm}/{task}: exit_code={exit_code}")
                 continue
             ref_path = reference_for(args.references, task)
-            if not ref_path.exists():
+            repair = task_dir / "repair_result.json"
+            metrics = parse_run(task_dir)
+            if repair.exists():
+                rr = json.loads(repair.read_text())
+                passed = bool(rr.get("passed"))
+                metrics.update({"run_id": args.label, "arm": arm, "task": task,
+                                "score": 1 if passed else 0, "score_max": 1,
+                                "checks": {"tests_pass": passed}, "repair": rr})
+            elif ref_path.exists():
+                reference = json.loads(ref_path.read_text())
+                metrics.update({"run_id": args.label, "arm": arm, "task": task,
+                                **score(reference, metrics["final_text"])})
+            else:
                 failures.append(f"{arm}/{task}: no reference at {ref_path}")
                 continue
-            metrics = parse_run(task_dir)
-            reference = json.loads(ref_path.read_text())
-            metrics.update({"run_id": args.label, "arm": arm, "task": task,
-                            **score(reference, metrics["final_text"])})
             metrics["wall_seconds"] = float((task_dir / "wall_seconds").read_text().strip()) \
                 if (task_dir / "wall_seconds").exists() else None
             metrics["exit_code"] = exit_code
